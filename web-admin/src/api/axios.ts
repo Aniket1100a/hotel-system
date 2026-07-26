@@ -1,7 +1,11 @@
 import axios from 'axios';
 
-// Assume backend is on same domain/port in production, or configure via env
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+// Try both VITE_API_BASE_URL and VITE_API_URL for flexibility
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+if (!BASE_URL) {
+  console.warn("VITE_API_BASE_URL or VITE_API_URL is not defined in your .env file. API calls will fail.");
+}
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -29,8 +33,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const res = await axios.post(`${BASE_URL}auth/refresh/`, {
+        if (refreshToken && BASE_URL) {
+          // Use URL constructor or ensure trailing slash to avoid concatenation issues
+          const refreshUrl = BASE_URL.endsWith('/') ? `${BASE_URL}auth/refresh/` : `${BASE_URL}/auth/refresh/`;
+          const res = await axios.post(refreshUrl, {
             refresh: refreshToken,
           });
           if (res.data.access) {
@@ -40,7 +46,7 @@ api.interceptors.response.use(
           }
         }
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login (handled in AuthContext ideally)
+        // Refresh failed, clear tokens and redirect to login
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';

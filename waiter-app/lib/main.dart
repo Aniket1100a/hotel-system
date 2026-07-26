@@ -3,6 +3,7 @@ import 'services/api_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'models/user.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const HotelWaiterApp());
@@ -16,10 +17,7 @@ class HotelWaiterApp extends StatelessWidget {
     return MaterialApp(
       title: 'Hotel Waiter App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF111827),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       home: const _AuthGate(),
     );
   }
