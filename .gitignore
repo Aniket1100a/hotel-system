@@ -1,0 +1,31 @@
+# --- Backend (Django/Python) ---
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/migrations/
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+backend/.env
+*.pyc
+
+# --- Web Admin (React/Vite) ---
+web-admin/node_modules/
+web-admin/dist/
+web-admin/.env
+
+# --- Waiter App (Flutter) ---
+waiter-app/.dart_tool/
+waiter-app/.flutter-plugins
+waiter-app/.flutter-plugins-dependencies
+waiter-app/build/
+waiter-app/.pub-cache/
+waiter-app/.pub/
+waiter-app/ios/Pods/
+waiter-app/android/.gradle/
+
+# --- OS / Editor ---
+.DS_Store
+.vscode/
+.idea/
