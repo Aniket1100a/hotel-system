@@ -23,6 +23,7 @@ export default function ProtectedRoute() {
 
   const navigation = [
     { name: 'Overview', href: '/', icon: LayoutDashboard },
+    { name: 'Kitchen View', href: '/kitchen', icon: UtensilsCrossed },
     { name: 'Menu Management', href: '/menu', icon: UtensilsCrossed },
     { name: 'Billing & Orders', href: '/billing', icon: Receipt },
   ];

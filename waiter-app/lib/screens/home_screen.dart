@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/menu.dart';
 import '../models/table.dart';
+import '../models/order.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
@@ -24,11 +25,13 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DiningTable> _tables = [];
   List<MenuCategory> _menu = [];
   DiningTable? _selectedTable;
+  List<Order> _activeOrders = [];
 
   // menuItemId -> quantity
   final Map<int, int> _cart = {};
 
   bool _loading = true;
+  bool _fetchingOrders = false;
   bool _connected = true;
   String? _error;
 
@@ -61,6 +64,27 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Future<void> _fetchActiveOrders(int tableId) async {
+    setState(() => _fetchingOrders = true);
+    try {
+      final orders = await _apiService.fetchActiveOrders(tableId);
+      setState(() => _activeOrders = orders);
+    } catch (e) {
+      print('Error fetching active orders: $e');
+    } finally {
+      setState(() => _fetchingOrders = false);
+    }
+  }
+
+  void _selectTable(DiningTable table) {
+    setState(() {
+      _selectedTable = table;
+      _activeOrders = [];
+      _cart.clear();
+    });
+    _fetchActiveOrders(table.id);
   }
 
   void _changeQuantity(int menuItemId, int delta) {
@@ -107,6 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
       setState(() => _cart.clear());
+      _fetchActiveOrders(_selectedTable!.id);
+      _apiService.fetchTables().then((t) => setState(() => _tables = t));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -226,10 +252,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         return TableChip(
                           table: t,
                           selected: _selectedTable?.id == t.id,
-                          onTap: () => setState(() => _selectedTable = t),
+                          onTap: () => _selectTable(t),
                         );
                       }).toList(),
                     ),
+              if (_selectedTable != null && _activeOrders.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _sectionLabel('ACTIVE ORDERS (TABLE ${_selectedTable!.number})'),
+                const SizedBox(height: 10),
+                ..._activeOrders.map((order) => _buildActiveOrderCard(order)),
+              ],
               const SizedBox(height: 24),
               _sectionLabel('MENU'),
               const SizedBox(height: 10),
@@ -244,6 +276,50 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         _buildCartBar(),
       ],
+    );
+  }
+
+  Widget _buildActiveOrderCard(Order order) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primarySoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Order #${order.id}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              StatusPill(
+                label: order.status,
+                color: order.status == 'PENDING' ? AppColors.warning : AppColors.success,
+                softColor: order.status == 'PENDING' ? AppColors.warningSoft : AppColors.successSoft,
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          ...order.items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Text('${item.quantity}x ', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                Expanded(child: Text(item.menuItemName, style: const TextStyle(fontSize: 12))),
+                if (item.status == 'READY')
+                  const Icon(Icons.check_circle, color: AppColors.success, size: 14)
+                else if (item.status == 'PREPARING')
+                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning))
+                else
+                  const Icon(Icons.timer_outlined, color: AppColors.textMuted, size: 14),
+              ],
+            ),
+          )),
+        ],
+      ),
     );
   }
 

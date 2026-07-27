@@ -5,6 +5,7 @@ import 'api_config.dart';
 import '../models/user.dart';
 import '../models/menu.dart';
 import '../models/table.dart';
+import '../models/order.dart';
 
 /// Thin wrapper around the Django REST API. Handles JWT storage and
 /// attaches the Authorization header automatically.
@@ -109,5 +110,18 @@ class ApiService {
     if (response.statusCode != 201) {
       throw Exception('Failed to place order: ${response.body}');
     }
+  }
+
+  /// GET /orders/?table=ID&status=PENDING,PREPARING,SERVED
+  Future<List<Order>> fetchActiveOrders(int tableId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/orders/?table=$tableId&status=PENDING,PREPARING,SERVED'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load active orders');
+    }
+    final List data = jsonDecode(response.body);
+    return data.map((o) => Order.fromJson(o)).toList();
   }
 }
