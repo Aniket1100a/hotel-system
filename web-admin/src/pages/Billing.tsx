@@ -80,7 +80,7 @@ export default function Billing() {
                         {new Date(inv.created_at || inv.date).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">Order #{inv.order_id || inv.order}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${inv.total_amount || inv.total}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">₹{inv.total_amount || inv.total}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={cn(
                           "px-2.5 py-1 rounded-full text-xs font-medium border",

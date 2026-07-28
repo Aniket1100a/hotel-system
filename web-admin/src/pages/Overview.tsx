@@ -48,7 +48,7 @@ export default function Overview() {
     },
     {
       name: 'Revenue Today',
-      value: '$1,240.00', // Mocked
+      value: '₹1,240.00', // Mocked
       icon: ReceiptText,
       change: '-2.4%',
       changeType: 'negative',
