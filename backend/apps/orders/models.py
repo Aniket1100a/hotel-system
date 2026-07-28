@@ -28,10 +28,17 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        PREPARING = 'PREPARING', 'Preparing'
+        READY = 'READY', 'Ready'
+        SERVED = 'SERVED', 'Served'
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(default=1)
     price_at_order = models.DecimalField(max_digits=8, decimal_places=2)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     note = models.CharField(max_length=255, blank=True)
 
     @property
@@ -39,4 +46,4 @@ class OrderItem(models.Model):
         return self.quantity * self.price_at_order
 
     def __str__(self):
-        return f"{self.quantity} x {self.menu_item.name}"
+        return f"{self.quantity} x {self.menu_item.name} ({self.status})"

@@ -14,11 +14,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         read_only_fields = ['billed_by', 'subtotal', 'tax_amount', 'total_amount']
 
     def create(self, validated_data):
+        from decimal import Decimal
         order = validated_data['order']
-        subtotal = order.total_amount
-        tax_percent = validated_data.get('tax_percent', 5.00)
-        discount = validated_data.get('discount_amount', 0)
-        tax_amount = (subtotal * tax_percent) / 100
+        subtotal = Decimal(str(order.total_amount))
+        tax_percent = Decimal(str(validated_data.get('tax_percent', '5.00')))
+        discount = Decimal(str(validated_data.get('discount_amount', '0')))
+
+        tax_amount = (subtotal * tax_percent) / Decimal('100')
         total = subtotal + tax_amount - discount
 
         request = self.context['request']

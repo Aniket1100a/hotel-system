@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProtectedRoute() {
@@ -26,6 +26,10 @@ export default function ProtectedRoute() {
     { name: 'Menu Management', href: '/menu', icon: UtensilsCrossed },
     { name: 'Billing & Orders', href: '/billing', icon: Receipt },
   ];
+
+  if (user.role === 'ADMIN' || user.role === 'MANAGER') {
+    navigation.push({ name: 'Staff Management', href: '/staff', icon: Users });
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-hidden">

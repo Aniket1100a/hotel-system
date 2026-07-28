@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Overview from './pages/Overview';
 import MenuManagement from './pages/MenuManagement';
 import Billing from './pages/Billing';
+import StaffManagement from './pages/StaffManagement';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/menu" element={<MenuManagement />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/staff" element={<StaffManagement />} />
           </Route>
         </Routes>
       </AuthProvider>

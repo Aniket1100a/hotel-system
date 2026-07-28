@@ -10,7 +10,8 @@ class Invoice(models.Model):
         UPI = 'UPI', 'UPI'
 
     order = models.OneToOneField(Order, on_delete=models.PROTECT, related_name='invoice')
-    billed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    billed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='invoices_issued')
+    discount_approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='discounts_approved')
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     tax_percent = models.DecimalField(max_digits=5, decimal_places=2, default=5.00)
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2)
