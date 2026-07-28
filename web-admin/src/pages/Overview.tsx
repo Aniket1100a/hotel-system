@@ -3,6 +3,7 @@ import { api } from '@/api/axios';
 import { Users, Utensils, ReceiptText, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, RefreshCcw, Receipt, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import { printDirectly } from '@/lib/printUtils';
 
 interface OrderItem {
   id: number;
@@ -96,8 +97,18 @@ export default function Overview() {
     if (!window.confirm("Are you sure you want to generate a bill for this order?")) return;
 
     try {
-      await api.post('/billing/', { order: orderId });
-      alert("Bill generated successfully!");
+      const res = await api.post('/billing/', { order: orderId });
+      const invoice = res.data;
+
+      // Fetch items for printing
+      const orderRes = await api.get(`/orders/${orderId}/`);
+
+      printDirectly({
+        ...invoice,
+        items: orderRes.data.items
+      });
+
+      alert("Bill generated and table freed!");
       fetchDashboardData();
     } catch (err) {
       console.error("Failed to generate bill", err);

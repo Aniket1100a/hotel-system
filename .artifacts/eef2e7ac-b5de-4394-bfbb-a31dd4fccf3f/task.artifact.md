@@ -1,9 +1,20 @@
-- [x] **Backend: Single Order per Table Logic**
-    - [x] Update `OrderSerializer.create` in `orders/serializers.py` to support merging
-- [x] **Data Cleanup: Merge Existing Orders**
-    - [x] Create `merge_orders.py` script
-    - [x] Run the merge script
-- [x] **Verification**
-    - [x] Test merging logic (OrderSerializer)
-    - [x] Verify Dashboard cleanup via shell script
-    - [x] Verify "Bill Table" fix (Decimal type error fixed)
+# Task: Fix Menu Links & Enable Editing
+
+## Backend Development
+- [ ] **Billing Logic Sanity Check**
+    - [ ] Update `InvoiceSerializer.create` in `billing/serializers.py` with safety checks
+
+## Web Admin (React)
+- [ ] **Menu Management UI Refactor**
+    - [ ] Add state for `editingItem` and `editingCategory`
+    - [ ] Implement `handleEditItem` and `handleEditCategory` functions
+    - [ ] Update `handleAddItem` and `handleAddCat` to support updating (PATCH)
+    - [ ] Add "Linked Product" column to the Items table
+    - [ ] Add auto-fill logic for "Deduct Qty" in the modal
+- [ ] **UI Polish**
+    - [ ] Ensure delete/edit buttons are always accessible or have better hover states
+
+## Verification
+- [ ] Edit an existing item (e.g., "sprite") to link it to inventory
+- [ ] Verify the link appears in the table
+- [ ] Perform a test bill and check stock deduction

@@ -33,7 +33,34 @@ class InvoiceSerializer(serializers.ModelSerializer):
             discount_amount=discount,
             total_amount=total,
             payment_method=validated_data.get('payment_method', Invoice.PaymentMethod.CASH),
+            is_paid=True,  # Set to PAID immediately
         )
+
+        # --- AUTO-DEDUCT INVENTORY ---
+        from apps.inventory.models import InventoryItem, StockLog
+        for item in order.items.all():
+            linked_item = item.menu_item.linked_inventory_item
+            if linked_item:
+                deduction = item.menu_item.inventory_deduction_quantity * item.quantity
+                linked_item.current_stock -= deduction
+                linked_item.save()
+
+                # Log the deduction
+                StockLog.objects.create(
+                    item=linked_item,
+                    quantity=-deduction,
+                    change_type='USAGE',
+                    user=request.user,
+                    notes=f"Auto-deducted for Order #{order.id}"
+                )
+
+        # Update order status
         order.status = order.Status.BILLED
         order.save(update_fields=['status'])
+
+        # Free the table immediately
+        table = order.table
+        table.status = 'FREE'
+        table.save(update_fields=['status'])
+
         return invoice

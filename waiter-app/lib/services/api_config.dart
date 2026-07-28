@@ -7,5 +7,5 @@
 /// Find it by running `ipconfig` (Windows) or `ifconfig` / `ip addr`
 /// (Mac/Linux) on the machine running the Django server.
 class ApiConfig {
-  static const String baseUrl = 'http://10.192.238.105:8000/api';
+  static const String baseUrl = 'http://10.221.44.182:8000/api';
 }

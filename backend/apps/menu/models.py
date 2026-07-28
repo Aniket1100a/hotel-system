@@ -24,6 +24,20 @@ class MenuItem(models.Model):
     image = models.ImageField(upload_to='menu_items/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # New inventory linking fields
+    linked_inventory_item = models.ForeignKey(
+        'inventory.InventoryItem',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='menu_items'
+    )
+    inventory_deduction_quantity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1.00
+    )
+
     class Meta:
         ordering = ['category__display_order', 'name']
 

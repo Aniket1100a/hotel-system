@@ -1,41 +1,34 @@
-# Implementation Plan - Single Table Tab & Billing Fix
+# Implementation Plan - Fix Menu Links & Edit Support
 
-Ensure each dining table has only one active "tab" (Order) at a time. All items added by waiters will append to this single active order. This also fixes the "Error generating bill" issue caused by multiple orders on the same table.
+Enhance the Menu Management page to ensure inventory links are saved correctly and allow editing existing items to connect them to inventory.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Order Merging**: From now on, when a waiter adds items to a table that already has an order, the system will NOT create a new order ID. It will simply add the items to the existing one.
+> **Stock Link Visibility**: I will add a new column to your Menu table so you can see exactly which dishes are linked to which inventory products.
 >
-> **Data Cleanup**: I will automatically merge your current active orders (like the three separate orders for Table 1) into a single order so your dashboard looks clean immediately.
+> **Editing Support**: I am enabling the **Edit (Pencil)** button so you can link your existing items (like Coffee or Tea) to inventory without having to delete and re-add them.
 
 ## Proposed Changes
 
-### 1. Backend (`orders` app)
+### Web Admin Frontend
 
-#### [MODIFY] [serializers.py](file:///F:/hotel management/hotel-system/backend/apps/orders/serializers.py)
-- Update `OrderSerializer.create`:
-    - Check if the table has an active order (Status: PENDING, PREPARING, SERVED).
-    - If found, redirect the logic to the `update` method of that existing order.
-    - If not found, create a new order as usual.
+#### [MODIFY] [MenuManagement.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/MenuManagement.tsx)
+- Implement **Edit Item** logic:
+    - clicking the pencil icon will open the modal pre-filled with the item's data.
+    - `handleSubmit` will handle both `POST` (create) and `PATCH` (update).
+- Implement **Edit Category** logic.
+- Add **"Linked Product"** column to the Menu Items table.
+- **Auto-Fill Logic**: When selecting an inventory item, if the "Deduct Qty" is 0 or empty, automatically set it to **1.00** to ensure stock is deducted.
 
-### 2. Data Migration / Cleanup
-
-#### [NEW] [merge_orders.py](file:///F:/hotel management/hotel-system/backend/merge_orders.py)
-- A script to find tables with multiple active orders and move all `OrderItems` to the oldest order, then delete the duplicates.
-
-### 3. Web Admin Dashboard
-
-#### [MODIFY] [Overview.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Overview.tsx)
-- No major code changes needed, but ensuring only one card per table will resolve the UI clutter seen in the screenshot.
+### Backend (`billing` app)
+- The deduction logic is already correct, but I will add a sanity check to ensure it doesn't fail if an inventory item is missing.
 
 ## Verification Plan
 
-### Automated Tests
-- Verify that calling POST `/orders/` twice for the same table resulting in only ONE order entry in the database.
-
 ### Manual Verification
-1. Place an order for Table 1.
-2. Place another order for Table 1 with different items.
-3. Check the Dashboard: Verify only **one card** exists for Table 1 containing all items.
-4. Click "Bill Table" and verify the bill is generated successfully without error.
+1. Open **Menu Management**.
+2. Click the **Edit (Pencil)** icon on "Coffee".
+3. Select an inventory item and set "Deduct Qty" to 1. Save.
+4. Verify the "Linked Product" column now shows the connection.
+5. Create a test bill and verify the stock decreases in the **Inventory** page.

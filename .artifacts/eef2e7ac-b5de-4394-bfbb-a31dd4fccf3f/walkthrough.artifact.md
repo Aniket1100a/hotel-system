@@ -1,32 +1,27 @@
-# Walkthrough - Single Table Billing & Error Fix
+# Walkthrough - Linked Inventory for Beverages
 
-I have optimized the ordering system to ensure each table maintains a single "Tab" (Order) and fixed the billing error you encountered.
+I have successfully implemented the automatic stock deduction system for beverages.
 
-## Key Fixes
+## Key Changes
 
-### 1. Automatic Order Merging
-Waiters can now add items to a table multiple times, and the system will automatically group them into the **same order ID**.
-- **Before**: Every "Send Order" click created a new Order ID, leading to multiple cards for the same table.
-- **After**: The system checks if a table already has an active order and simply appends new items to it.
+### 1. Beverage to Stock Linking
+- **[NEW] Database Fields**: `MenuItem` now has two new fields:
+    - `linked_inventory_item`: Connects a menu dish to an item in your inventory.
+    - `inventory_deduction_quantity`: Defines how many units (e.g., bottles) to subtract from stock per sale.
+- **[NEW] Admin UI**: The "Add Menu Item" form now includes a dropdown to select an inventory item and specify the deduction amount.
 
-### 2. "Error generating bill" Resolved
-The error shown in your screenshot was caused by a technical mismatch in how the backend calculated taxes (multiplying decimals with floats).
-- I have updated the calculation logic to use strict **Decimal precision**, ensuring reliable totals and fixing the "Bill Table" button.
+### 2. Automatic Stock Deduction
+- **Billing Integration**: When you click **"Bill Table"** on the dashboard:
+    - The system scans the order for any items linked to the inventory.
+    - It automatically subtracts the correct quantity from your current stock balance.
+    - It generates an audit log in the **Stock History** with a note: *"Auto-deducted for Order #XX"*.
 
-### 3. Dashboard Cleanup
-I ran a cleanup script that merged your existing duplicate orders into single table cards. Your dashboard should now look clean and organized.
+## How to Set it Up
 
-## Verification Results
-
-- **Order Merging**: Verified via API that multiple POST requests for the same table results in a single growing order.
-- **Billing Logic**: Verified via shell simulation that "Bill Table" successfully generates an invoice and marks the order as `BILLED`.
-- **UI Experience**: The dashboard now only shows one card per active table, preventing clutter.
-
-## How to Verify
-
-1. **Open Dashboard**: Go to [http://localhost:3000](http://localhost:3000).
-2. **One Card per Table**: You should see only one card for Table 1 (containing all your previous test items).
-3. **Bill Table**: Click **"Bill Table"** on any active order. It will now work perfectly and move the order to the **Billing & Orders** page.
+1. **Inventory First**: Go to the **Inventory** page and create your stock (e.g., "Sprite 500ml", Unit "Piece", Stock "24").
+2. **Menu Link**: Go to **Menu Management**, click **"Add Item"** (or Edit), and select "Sprite 500ml" from the **Link Inventory** dropdown. Set **Deduct Qty** to "1".
+3. **Test Sale**: From the Waiter App, place an order for 2 Sprites.
+4. **Auto-Deduct**: Once you generate the bill on the dashboard, check the Inventory page. Your stock will be "22", and a history entry will show the deduction.
 
 > [!TIP]
-> This "Single Tab" approach makes it much easier for the Cashier to close a table, as they only need to process one bill for the entire stay.
+> This system is perfect for tracking bottles and pre-packaged beverages. You can also use it for ingredients if you set the deduction to fractions (e.g., "0.5 kg").
