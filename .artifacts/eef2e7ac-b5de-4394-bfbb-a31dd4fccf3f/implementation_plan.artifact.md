@@ -1,63 +1,41 @@
-# Implementation Plan - Hotel Chaturthi Pure Veg (Phase 1)
+# Implementation Plan - Single Table Tab & Billing Fix
 
-This plan outlines the core operational features for Phase 1 of the Restaurant Management System, as per the clarified requirements.
+Ensure each dining table has only one active "tab" (Order) at a time. All items added by waiters will append to this single active order. This also fixes the "Error generating bill" issue caused by multiple orders on the same table.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Waiters' 2-Minute Rule**: I will implement a server-side check that prevents waiters from deleting or modifying order items after 2 minutes of the order being placed.
+> **Order Merging**: From now on, when a waiter adds items to a table that already has an order, the system will NOT create a new order ID. It will simply add the items to the existing one.
 >
-> **Manual Table Clearing**: I will add a "Close Table" feature for Managers/Cashiers/Owners to manually reset a table status to `FREE`, logging whether it was cleared as "Paid" or "Unpaid".
->
-> **KOT Logic**: Every "Save" or "Update" on a table will generate a new Kitchen Order Ticket (KOT) for only the newly added items.
+> **Data Cleanup**: I will automatically merge your current active orders (like the three separate orders for Table 1) into a single order so your dashboard looks clean immediately.
 
 ## Proposed Changes
 
-### 1. Floor & Table Management (`tables` app)
+### 1. Backend (`orders` app)
 
-#### [MODIFY] [models.py](file:///F:/hotel management/hotel-system/backend/apps/tables/models.py)
-- [NEW] `TableSection` model: `name` (e.g., Main Hall, Garden).
-- [MODIFY] `DiningTable` model: Add `section` (ForeignKey to `TableSection`).
+#### [MODIFY] [serializers.py](file:///F:/hotel management/hotel-system/backend/apps/orders/serializers.py)
+- Update `OrderSerializer.create`:
+    - Check if the table has an active order (Status: PENDING, PREPARING, SERVED).
+    - If found, redirect the logic to the `update` method of that existing order.
+    - If not found, create a new order as usual.
 
-### 2. Order & Kitchen Management (`orders` app)
+### 2. Data Migration / Cleanup
 
-#### [MODIFY] [models.py](file:///F:/hotel management/hotel-system/backend/apps/orders/models.py)
-- [NEW] `KOT` model: Links to `Order`, tracks a specific "ticket" of items.
-- [MODIFY] `OrderItem`: Add `status` (PENDING, PREPARING, READY), `kot` (FK to `KOT`), and `is_served` boolean.
+#### [NEW] [merge_orders.py](file:///F:/hotel management/hotel-system/backend/merge_orders.py)
+- A script to find tables with multiple active orders and move all `OrderItems` to the oldest order, then delete the duplicates.
 
-#### [MODIFY] [views.py](file:///F:/hotel management/hotel-system/backend/apps/orders/views.py)
-- Implement the 2-minute time check logic on `update` and `partial_update`.
-- Logic to auto-mark Order as `SERVED` when all items are marked `READY`.
+### 3. Web Admin Dashboard
 
-### 3. Billing & Audit (`billing` & `accounts` apps)
-
-#### [MODIFY] [models.py](file:///F:/hotel management/hotel-system/backend/apps/billing/models.py)
-- [MODIFY] `Invoice`: Ensure it records `billed_by` (Employee ID/Name) and add a field for `discount_approved_by` if a Manager approved a Cashier's discount.
-
-#### [MODIFY] [views.py](file:///F:/hotel management/hotel-system/backend/apps/billing/views.py)
-- Restricted "Manual Table Clear" endpoint for Managers/Cashiers/Owners.
-
-### 4. UI Enhancements & Printing
-
-#### Web Admin (React)
-- **Dashboard**: Group tables by `TableSection`.
-- **User Management**: Ensure every employee has a clear ID/Username.
-- **Kitchen View**: [NEW] A dedicated page for Kitchen Staff to view incoming orders (Digital KOT Display) and mark items as `READY`.
-- **Thermal Printing**: [NEW] Create optimized, narrow-width layouts (80mm) for **Bills only**, including Hotel Chaturthi branding and tax details.
-- **Digital Invoices**: Ensure the Billing page generates a clean digital view that can be saved as PDF or shared.
-
-#### Waiter App (Flutter)
-- **Order Status**: Display live readiness status (e.g., "Ready" icons) for each item in the order list.
-- **2-Minute Timer**: Show a visual countdown or lock the edit button after 2 mins.
+#### [MODIFY] [Overview.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Overview.tsx)
+- No major code changes needed, but ensuring only one card per table will resolve the UI clutter seen in the screenshot.
 
 ## Verification Plan
 
 ### Automated Tests
-- Test 2-minute edit restriction via API.
-- Test KOT generation for incremental orders.
-- Test Role-based access for Discounts and Table Clearing.
+- Verify that calling POST `/orders/` twice for the same table resulting in only ONE order entry in the database.
 
 ### Manual Verification
-1. Place an order as a Waiter. Try to edit it after 1 minute (should work) and after 3 minutes (should fail).
-2. Mark items as Ready in the Kitchen View. Verify the Waiter App updates in real-time.
-3. Generate a bill with a discount as a Manager and verify the audit log shows the Manager's name.
+1. Place an order for Table 1.
+2. Place another order for Table 1 with different items.
+3. Check the Dashboard: Verify only **one card** exists for Table 1 containing all items.
+4. Click "Bill Table" and verify the bill is generated successfully without error.

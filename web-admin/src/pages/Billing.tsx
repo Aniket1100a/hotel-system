@@ -26,6 +26,7 @@ interface InvoiceDetail {
 export default function Billing() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,20 @@ export default function Billing() {
       setShowPrintModal(true);
     } catch (error) {
       console.error("Error fetching order details:", error);
+    }
+  };
+
+  const handleMarkPaid = async (id: number) => {
+    if (!window.confirm("Mark this invoice as Paid? This will also free the table.")) return;
+    setUpdatingId(id);
+    try {
+      await api.post(`/billing/${id}/mark_paid/`);
+      fetchInvoices();
+    } catch (error) {
+      console.error("Error marking as paid:", error);
+      alert("Failed to update status.");
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -155,12 +170,22 @@ export default function Billing() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">Table {inv.table_number} / Order #{inv.order}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">₹{parseFloat(inv.total_amount).toLocaleString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border",
-                          inv.is_paid ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
-                        )}>
-                          {inv.is_paid ? 'PAID' : 'PENDING'}
-                        </span>
+                        <button
+                          onClick={() => !inv.is_paid && handleMarkPaid(inv.id)}
+                          disabled={updatingId === inv.id}
+                          className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border transition-all active:scale-95 disabled:opacity-50",
+                            inv.is_paid
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default"
+                              : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 cursor-pointer"
+                          )}
+                        >
+                          {updatingId === inv.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin mx-auto" />
+                          ) : (
+                            inv.is_paid ? 'PAID' : 'PENDING'
+                          )}
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button

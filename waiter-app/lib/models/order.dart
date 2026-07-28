@@ -4,7 +4,6 @@ class OrderItem {
   final int quantity;
   final double subtotal;
   final String status;
-  final int? kotId;
 
   OrderItem({
     required this.id,
@@ -12,7 +11,6 @@ class OrderItem {
     required this.quantity,
     required this.subtotal,
     required this.status,
-    this.kotId,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -22,7 +20,6 @@ class OrderItem {
       quantity: json['quantity'],
       subtotal: double.parse(json['subtotal'].toString()),
       status: json['status'],
-      kotId: json['kot'],
     );
   }
 }

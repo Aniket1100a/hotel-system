@@ -1,8 +1,11 @@
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from .models import User
 from .serializers import MyTokenObtainPairSerializer, UserSerializer
+from .permissions import IsAdminOrManager
 
 
 class LoginView(TokenObtainPairView):
@@ -17,3 +20,9 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by('id')
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrManager]

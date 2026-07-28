@@ -1,49 +1,32 @@
-# Walkthrough - Phase 1 Implementation Complete
+# Walkthrough - Single Table Billing & Error Fix
 
-I have successfully implemented the core operational features for **Hotel Chaturthi Pure Veg** as per the Phase 1 requirements.
+I have optimized the ordering system to ensure each table maintains a single "Tab" (Order) and fixed the billing error you encountered.
 
-## Key Features Delivered
+## Key Fixes
 
-### 1. Digital KOT & Kitchen Display (KDS)
-- **Automatic KOT Generation**: Every time a waiter places or updates an order, the system identifies only the new items and generates a fresh **Digital KOT**.
-- **Kitchen View**: A dedicated page for kitchen staff (`/kitchen`) to see live tickets. Items can be marked as `READY` individually.
-- **Waiters' Live Status**: Waiters can see which items are ready for pickup directly in their app.
+### 1. Automatic Order Merging
+Waiters can now add items to a table multiple times, and the system will automatically group them into the **same order ID**.
+- **Before**: Every "Send Order" click created a new Order ID, leading to multiple cards for the same table.
+- **After**: The system checks if a table already has an active order and simply appends new items to it.
 
-### 2. Table & Section Management
-- **Floor Mapping**: Tables are now grouped by sections (e.g., Main Hall, Garden).
-- **Dashboard Overview**: The admin dashboard shows a real-time status grid of all tables, color-coded by occupancy (Free, Occupied, Reserved).
+### 2. "Error generating bill" Resolved
+The error shown in your screenshot was caused by a technical mismatch in how the backend calculated taxes (multiplying decimals with floats).
+- I have updated the calculation logic to use strict **Decimal precision**, ensuring reliable totals and fixing the "Bill Table" button.
 
-### 3. Smart Order Restrictions
-- **2-Minute Rule**: Waiters have exactly 2 minutes to correct mistakes in an order. After 2 minutes, the system locks the existing items to prevent unauthorized changes after kitchen preparation has started.
-- **Manual Clearance**: Managers and Owners can manually "Close" a table (Paid or Unpaid) to reset its status.
+### 3. Dashboard Cleanup
+I ran a cleanup script that merged your existing duplicate orders into single table cards. Your dashboard should now look clean and organized.
 
-### 4. Professional Billing
-- **Thermal POS Layout**: Added an 80mm thermal-optimized bill layout including "Hotel Chaturthi" branding, GST/Tax breakdown, and itemized totals.
-- **Audit Log**: Every bill records exactly which employee generated it and who approved any discounts.
+## Verification Results
 
-## How to Test
+- **Order Merging**: Verified via API that multiple POST requests for the same table results in a single growing order.
+- **Billing Logic**: Verified via shell simulation that "Bill Table" successfully generates an invoice and marks the order as `BILLED`.
+- **UI Experience**: The dashboard now only shows one card per active table, preventing clutter.
 
-### 1. Kitchen Operations
-1. Log in to the **Web Admin** and go to the **Kitchen View**.
-2. From the **Waiter App**, pick a table and place an order.
-3. Watch the order appear instantly on the Kitchen Display.
-4. Mark items as "Ready" in the kitchen and see the status update in the Waiter App.
+## How to Verify
 
-### 2. Billing & Printing
-1. Once an order is ready, go to the **Dashboard Overview**.
-2. Click **"Bill Table"** on an active order.
-3. Go to the **Billing & Orders** page.
-4. Click the **Printer icon** to see the Thermal Bill preview and trigger a print.
-
-### 3. Table Sections
-1. Go to **Overview**. You will see tables grouped under "Main Hall" and "Garden".
-2. Use the Django Admin (or upcoming Manager UI) to create more sections as needed.
-
-## Manual Verification Results
-- [x] KOTs created for incremental items only.
-- [x] 2-minute rule enforced on backend.
-- [x] Thermal bill format verified (80mm standard).
-- [x] Table sections correctly displayed on dashboard.
+1. **Open Dashboard**: Go to [http://localhost:3000](http://localhost:3000).
+2. **One Card per Table**: You should see only one card for Table 1 (containing all your previous test items).
+3. **Bill Table**: Click **"Bill Table"** on any active order. It will now work perfectly and move the order to the **Billing & Orders** page.
 
 > [!TIP]
-> The system now auto-refreshes the Kitchen and Dashboard views to ensure no order is missed.
+> This "Single Tab" approach makes it much easier for the Cashier to close a table, as they only need to process one bill for the entire stay.

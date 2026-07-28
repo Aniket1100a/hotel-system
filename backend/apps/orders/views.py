@@ -2,8 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Order, KOT, OrderItem
-from .serializers import OrderSerializer, KOTSerializer, OrderItemSerializer
+from .models import Order, OrderItem
+from .serializers import OrderSerializer, OrderItemSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -27,17 +27,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         return qs
 
 
-class KOTViewSet(viewsets.ReadOnlyModelViewSet):
-    """Kitchen staff uses this to see active tickets."""
-    queryset = KOT.objects.all().prefetch_related('items', 'items__menu_item')
-    serializer_class = KOTSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        # Only show KOTs that have items NOT ready
-        return super().get_queryset().filter(items__status__in=['PENDING', 'PREPARING']).distinct()
-
-
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
@@ -52,7 +41,7 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         # Check if all items in the order are READY or SERVED
         order = item.order
         if not order.items.exclude(status__in=[OrderItem.Status.READY, OrderItem.Status.SERVED]).exists():
-            order.status = Order.Status.SERVED # Or a custom READY status if we added one
+            order.status = Order.Status.SERVED
             order.save()
 
         return Response({'status': 'item marked ready'})

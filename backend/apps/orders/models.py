@@ -27,19 +27,6 @@ class Order(models.Model):
         return sum(item.subtotal for item in self.items.all())
 
 
-class KOT(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='kots')
-    number = models.PositiveIntegerField()  # Incremental for the specific order
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['number']
-        unique_together = ['order', 'number']
-
-    def __str__(self):
-        return f"KOT #{self.number} for Order #{self.order_id}"
-
-
 class OrderItem(models.Model):
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
@@ -48,7 +35,6 @@ class OrderItem(models.Model):
         SERVED = 'SERVED', 'Served'
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    kot = models.ForeignKey(KOT, on_delete=models.SET_NULL, null=True, related_name='items')
     menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(default=1)
     price_at_order = models.DecimalField(max_digits=8, decimal_places=2)

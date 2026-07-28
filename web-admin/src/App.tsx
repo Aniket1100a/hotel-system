@@ -10,7 +10,7 @@ import Login from './pages/Login';
 import Overview from './pages/Overview';
 import MenuManagement from './pages/MenuManagement';
 import Billing from './pages/Billing';
-import KitchenDisplay from './pages/KitchenDisplay';
+import StaffManagement from './pages/StaffManagement';
 
 export default function App() {
   return (
@@ -20,9 +20,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Overview />} />
-            <Route path="/kitchen" element={<KitchenDisplay />} />
             <Route path="/menu" element={<MenuManagement />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/staff" element={<StaffManagement />} />
           </Route>
         </Routes>
       </AuthProvider>
