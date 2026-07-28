@@ -109,7 +109,7 @@ export default function MenuManagement() {
                       <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{item.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{item.category?.name || item.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${item.price}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">₹{item.price}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button className="text-indigo-600 hover:text-indigo-900 mr-4"><Edit2 className="w-4 h-4" /></button>
                           <button className="text-rose-600 hover:text-rose-900"><Trash2 className="w-4 h-4" /></button>

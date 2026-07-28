@@ -167,8 +167,8 @@ export default function Billing() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {new Date(inv.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">Table {inv.table_number} / Order #{inv.order}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">₹{parseFloat(inv.total_amount).toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">Order #{inv.order_id || inv.order}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">₹{inv.total_amount || inv.total}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
                           onClick={() => !inv.is_paid && handleMarkPaid(inv.id)}

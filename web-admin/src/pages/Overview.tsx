@@ -122,7 +122,7 @@ export default function Overview() {
     },
     {
       name: 'Revenue Today',
-      value: `₹${stats.revenueToday.toLocaleString()}`,
+      value: '₹1,240.00', // Mocked
       icon: ReceiptText,
       change: '+5.2%',
       changeType: 'positive',
