@@ -12,6 +12,7 @@ import MenuManagement from './pages/MenuManagement';
 import Billing from './pages/Billing';
 import StaffManagement from './pages/StaffManagement';
 import Inventory from './pages/Inventory';
+import TableManagement from './pages/TableManagement';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/billing" element={<Billing />} />
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/tables" element={<TableManagement />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -30,7 +30,9 @@ export default function Billing() {
       const res = await api.get(`/orders/${invoice.order}/`);
       printDirectly({
         ...invoice,
-        items: res.data.items
+        items: res.data.items,
+        payment_method: invoice.payment_method, // Pass the recorded method
+        waiter_name: res.data.waiter_name
       });
     } catch (error) {
       console.error("Error fetching order details:", error);

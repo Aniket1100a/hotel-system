@@ -9,6 +9,7 @@ interface OrderItem {
   id: number;
   menu_item_name: string;
   quantity: number;
+  price_at_order: string;
   subtotal: string;
 }
 
@@ -38,6 +39,7 @@ export default function Overview() {
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [tablesBySection, setTablesBySection] = useState<SectionGroup>({});
+  const [paymentMethods, setPaymentMethods] = useState<{[key: number]: string}>({});
   const [stats, setStats] = useState({
     tablesActive: 0,
     ordersToday: 0,
@@ -94,10 +96,14 @@ export default function Overview() {
   }, []);
 
   const handleGenerateBill = async (orderId: number) => {
-    if (!window.confirm("Are you sure you want to generate a bill for this order?")) return;
+    const method = paymentMethods[orderId] || 'CASH';
+    if (!window.confirm(`Generate ${method} bill for this order and free the table?`)) return;
 
     try {
-      const res = await api.post('/billing/', { order: orderId });
+      const res = await api.post('/billing/', {
+        order: orderId,
+        payment_method: method
+      });
       const invoice = res.data;
 
       // Fetch items for printing
@@ -105,7 +111,8 @@ export default function Overview() {
 
       printDirectly({
         ...invoice,
-        items: orderRes.data.items
+        items: orderRes.data.items,
+        waiter_name: orderRes.data.waiter_name
       });
 
       alert("Bill generated and table freed!");
@@ -288,13 +295,24 @@ export default function Overview() {
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Total Amount</p>
                     <p className="text-lg font-bold text-slate-900">₹{parseFloat(order.total_amount).toLocaleString()}</p>
                   </div>
-                  <button
-                    onClick={() => handleGenerateBill(order.id)}
-                    className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
-                  >
-                    <Receipt className="w-4 h-4" />
-                    Bill Table
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <select
+                      value={paymentMethods[order.id] || 'CASH'}
+                      onChange={(e) => setPaymentMethods({ ...paymentMethods, [order.id]: e.target.value })}
+                      className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="CASH">CASH</option>
+                      <option value="CARD">CARD</option>
+                      <option value="UPI">ONLINE</option>
+                    </select>
+                    <button
+                      onClick={() => handleGenerateBill(order.id)}
+                      className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      Bill Table
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
