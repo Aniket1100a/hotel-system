@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users, Package, Square } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users, Package, Square, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProtectedRoute() {
@@ -28,6 +28,7 @@ export default function ProtectedRoute() {
   ];
 
   if (user.role === 'ADMIN' || user.role === 'MANAGER') {
+    navigation.push({ name: 'Revenue Reports', href: '/reports', icon: BarChart2 });
     navigation.push({ name: 'Staff Management', href: '/staff', icon: Users });
     navigation.push({ name: 'Inventory', href: '/inventory', icon: Package });
     navigation.push({ name: 'Table Management', href: '/tables', icon: Square });

@@ -32,7 +32,8 @@ export default function Billing() {
         ...invoice,
         items: res.data.items,
         payment_method: invoice.payment_method, // Pass the recorded method
-        waiter_name: res.data.waiter_name
+        waiter_name: res.data.waiter_name,
+        order_type: res.data.order_type
       });
     } catch (error) {
       console.error("Error fetching order details:", error);

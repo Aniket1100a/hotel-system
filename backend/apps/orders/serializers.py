@@ -21,8 +21,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'table', 'table_number', 'waiter', 'waiter_name', 'status',
-                  'notes', 'items', 'total_amount', 'created_at', 'updated_at']
+        fields = ['id', 'table', 'table_number', 'waiter', 'waiter_name', 'order_type', 'status',
+                  'notes', 'is_handed_over', 'items', 'total_amount', 'created_at', 'updated_at']
         read_only_fields = ['waiter']
 
     def create(self, validated_data):
@@ -31,25 +31,31 @@ class OrderSerializer(serializers.ModelSerializer):
         request = self.context['request']
 
         # Check if table already has an active order
-        existing_order = Order.objects.filter(
-            table=table,
-            status__in=['PENDING', 'PREPARING', 'SERVED']
-        ).first()
+        if table:
+            existing_order = Order.objects.filter(
+                table=table,
+                status__in=['PENDING', 'PREPARING', 'SERVED']
+            ).first()
 
-        if existing_order:
-            # Add new items to existing order instead of creating a new one
-            for item_data in items_data:
-                OrderItem.objects.create(
-                    order=existing_order,
-                    menu_item=item_data['menu_item'],
-                    quantity=item_data['quantity'],
-                    note=item_data.get('note', ''),
-                    price_at_order=item_data['menu_item'].price,
-                )
-            return existing_order
+            if existing_order:
+                # Add new items to existing order instead of creating a new one
+                for item_data in items_data:
+                    OrderItem.objects.create(
+                        order=existing_order,
+                        menu_item=item_data['menu_item'],
+                        quantity=item_data['quantity'],
+                        note=item_data.get('note', ''),
+                        price_at_order=item_data['menu_item'].price,
+                    )
+                return existing_order
 
         # Standard creation if no active order exists
         order = Order.objects.create(waiter=request.user, **validated_data)
+
+        # Auto-occupy table if it's DINE_IN
+        if order.order_type == 'DINE_IN' and order.table:
+            order.table.status = 'OCCUPIED'
+            order.table.save(update_fields=['status'])
 
         for item_data in items_data:
             OrderItem.objects.create(

@@ -20,6 +20,7 @@ export interface PrintData {
   total_amount: string | number;
   payment_method?: string;
   waiter_name?: string;
+  order_type?: 'DINE_IN' | 'TAKEAWAY';
   created_at: string;
   items: PrintItem[];
 }
@@ -84,7 +85,9 @@ export const printDirectly = (data: PrintData) => {
         <table class="meta-table">
           <tr>
             <td style="width: 50%;">Date: ${formattedDate}</td>
-            <td style="width: 50%; font-weight: bold; text-align: right;">Dine In: ${data.table_number}</td>
+            <td style="width: 50%; font-weight: bold; text-align: right;">
+              ${data.order_type === 'TAKEAWAY' ? 'TAKEAWAY' : `Dine In: ${data.table_number}`}
+            </td>
           </tr>
           <tr>
             <td>${formattedTime}</td>

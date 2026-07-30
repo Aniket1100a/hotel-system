@@ -13,6 +13,7 @@ import Billing from './pages/Billing';
 import StaffManagement from './pages/StaffManagement';
 import Inventory from './pages/Inventory';
 import TableManagement from './pages/TableManagement';
+import Reports from './pages/Reports';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/tables" element={<TableManagement />} />
+            <Route path="/reports" element={<Reports />} />
           </Route>
         </Routes>
       </AuthProvider>

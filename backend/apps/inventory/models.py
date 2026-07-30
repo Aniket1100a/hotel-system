@@ -38,6 +38,7 @@ class StockLog(models.Model):
     change_type = models.CharField(max_length=15, choices=TYPE_CHOICES)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     notes = models.TextField(blank=True)
+    attachment = models.FileField(upload_to='stock_bills/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

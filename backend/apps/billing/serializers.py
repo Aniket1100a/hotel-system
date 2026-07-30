@@ -59,9 +59,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         order.status = order.Status.BILLED
         order.save(update_fields=['status'])
 
-        # Free the table immediately
-        table = order.table
-        table.status = 'FREE'
-        table.save(update_fields=['status'])
+        # Free the table immediately (only if it's a Dine-in order)
+        if order.table:
+            table = order.table
+            table.status = 'FREE'
+            table.save(update_fields=['status'])
 
         return invoice

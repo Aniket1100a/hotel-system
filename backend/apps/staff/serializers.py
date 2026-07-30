@@ -1,0 +1,25 @@
+from rest_framework import serializers
+from .models import Attendance, StaffPayment
+from apps.accounts.models import User
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    staff_name = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Attendance
+        fields = '__all__'
+
+    def get_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+
+class StaffPaymentSerializer(serializers.ModelSerializer):
+    staff_name = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StaffPayment
+        fields = '__all__'
+
+    def get_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"

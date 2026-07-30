@@ -1,31 +1,44 @@
-# Implementation Plan - Final Bill Alignment & Layout Fix
+# Implementation Plan - Hierarchical Revenue Analytics & Excel Export
 
-Fix the thermal bill layout to ensure perfect alignment, correct restaurant name, and clear quantity display.
+Implement a nested, hierarchical view for revenue reports (**Year > Month > Day > Individual Bills**) and add an option to download the data as an **Excel (.xlsx)** file.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Restaurant Name**: I will update the name to **HOTEL GANDHARVA** as shown in your photo.
+> **New Dependency**: I will add `openpyxl` to the backend to support generating true Excel files.
 >
-> **Alignment Strategy**: I will use a **fixed table layout** with precise character-based widths to ensure that columns never shift, even with long dish names.
+> **Export Scope**: The Excel file will include two sheets:
+> 1. **Summary**: Total revenue grouped by Month and Date.
+> 2. **All Bills**: A detailed list of every transaction (Bill No, Table, Waiter, Amount, Date) for the selected period.
 
 ## Proposed Changes
 
-### Web Admin Frontend
+### 1. Backend Development (`billing` app)
 
-#### [MODIFY] [printUtils.ts](file:///F:/hotel management/hotel-system/web-admin/src/lib/printUtils.ts)
-- Change header to **HOTEL GANDHARVA**.
-- Add `table-layout: fixed` to all tables.
-- Explicitly set `width` on both `th` and `td` for every column.
-- Use `word-wrap: break-word` for item names to prevent them from pushing the Price/Qty columns.
-- Ensure `text-align: right` is applied consistently via inline styles to bypass potential CSS issues in the temporary window.
-- Add a safety check for `quantity` to ensure it displays even if zero or null.
+#### [MODIFY] [views.py](file:///F:/hotel management/hotel-system/backend/apps/billing/views.py)
+- **Hierarchy Data**: Update `revenue_stats` to return daily totals for the **entire current year**.
+- **Excel Export**: Add a new action `export_revenue_excel`:
+    - Generate an `.xlsx` file using `openpyxl`.
+    - Format data into multiple sheets for readability.
+    - Return the file as a downloadable response.
+
+### 2. Web Admin Frontend
+
+#### [MODIFY] [Reports.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Reports.tsx)
+- **Annual History Tab**:
+    - Build an expandable **Month > Day** list using an Accordion UI.
+    - Integrate the existing "Individual Bills" modal into the daily level of the hierarchy.
+- **Excel Download Button**:
+    - Add a **"Download Report (.xlsx)"** button at the top of the Reports page.
+    - Link it to the new backend export endpoint.
 
 ## Verification Plan
 
+### Automated Tests
+- Verify the API correctly generates and serves a valid `.xlsx` file.
+
 ### Manual Verification
-1. Click **"Bill Table"** on the Dashboard.
-2. Check the print preview:
-    - **Header**: Verify it says "HOTEL GANDHARVA".
-    - **Columns**: Ensure "No., Item, Qty, Price, Amount" are perfectly aligned in straight vertical lines.
-    - **Quantity**: Ensure the number (e.g., 5, 1, 8) is visible in the Qty column.
+1. Open **Revenue Reports**.
+2. Expand a month and verify the daily list appears.
+3. Click the arrow on a day and verify the bill list modal opens.
+4. Click **"Download Report"** and verify that the Excel file downloads and contains accurate transaction data.

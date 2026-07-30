@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { Package, Plus, Trash2, Search, Loader2, X, AlertTriangle, ArrowDown, ArrowUp, History, ClipboardList } from 'lucide-react';
+import { Package, Plus, Trash2, Search, Loader2, X, AlertTriangle, ArrowDown, ArrowUp, History, ClipboardList, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InventoryItem {
@@ -20,6 +20,7 @@ interface StockLog {
   change_type: string;
   user_name: string;
   notes: string;
+  attachment: string | null;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ export default function Inventory() {
     change_type: 'USAGE',
     notes: '',
   });
+  const [billAttachment, setBillAttachment] = useState<File | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -93,13 +95,21 @@ export default function Inventory() {
     }
 
     try {
-      await api.post(`/inventory/items/${selectedItem.id}/update_stock/`, {
-        quantity: finalQty,
-        change_type: updateForm.change_type,
-        notes: updateForm.notes,
+      const data = new FormData();
+      data.append('quantity', finalQty.toString());
+      data.append('change_type', updateForm.change_type);
+      data.append('notes', updateForm.notes);
+      if (billAttachment) {
+        data.append('attachment', billAttachment);
+      }
+
+      await api.post(`/inventory/items/${selectedItem.id}/update_stock/`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+
       setIsUpdateModalOpen(false);
       setUpdateForm({ quantity: '', change_type: 'USAGE', notes: '' });
+      setBillAttachment(null);
       fetchData();
     } catch (error) {
       console.error("Error updating stock:", error);
@@ -244,6 +254,7 @@ export default function Inventory() {
                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Item</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Change</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Bill</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
                   </tr>
                 </thead>
@@ -266,6 +277,21 @@ export default function Inventory() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                           {log.change_type}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {log.attachment ? (
+                            <a
+                                href={log.attachment}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg hover:bg-indigo-100"
+                            >
+                                <ImageIcon className="w-3 h-3" />
+                                VIEW
+                            </a>
+                        ) : (
+                            <span className="text-[10px] font-bold text-slate-200 uppercase">None</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                         {log.user_name}
@@ -404,6 +430,27 @@ export default function Inventory() {
                   value={updateForm.notes}
                   onChange={e => setUpdateForm({...updateForm, notes: e.target.value})}
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Attach Bill (Optional)</label>
+                <div className="relative">
+                    <div className={cn(
+                        "w-full px-4 py-3 bg-slate-50 border-2 border-dashed rounded-2xl flex items-center gap-3 transition-all",
+                        billAttachment ? "border-indigo-500 bg-indigo-50/30" : "border-slate-100 hover:border-slate-200"
+                    )}>
+                        <Paperclip className={cn("w-4 h-4", billAttachment ? "text-indigo-600" : "text-slate-300")} />
+                        <span className="text-xs font-bold text-slate-500 truncate max-w-[200px]">
+                            {billAttachment ? billAttachment.name : "Choose file..."}
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => setBillAttachment(e.target.files?.[0] || null)}
+                        />
+                    </div>
+                </div>
               </div>
 
               <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg mt-4 transition-all">
