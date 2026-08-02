@@ -1,41 +1,44 @@
-# Implementation Plan - Single Table Tab & Billing Fix
+# Implementation Plan - Hierarchical Revenue Analytics & Excel Export
 
-Ensure each dining table has only one active "tab" (Order) at a time. All items added by waiters will append to this single active order. This also fixes the "Error generating bill" issue caused by multiple orders on the same table.
+Implement a nested, hierarchical view for revenue reports (**Year > Month > Day > Individual Bills**) and add an option to download the data as an **Excel (.xlsx)** file.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Order Merging**: From now on, when a waiter adds items to a table that already has an order, the system will NOT create a new order ID. It will simply add the items to the existing one.
+> **New Dependency**: I will add `openpyxl` to the backend to support generating true Excel files.
 >
-> **Data Cleanup**: I will automatically merge your current active orders (like the three separate orders for Table 1) into a single order so your dashboard looks clean immediately.
+> **Export Scope**: The Excel file will include two sheets:
+> 1. **Summary**: Total revenue grouped by Month and Date.
+> 2. **All Bills**: A detailed list of every transaction (Bill No, Table, Waiter, Amount, Date) for the selected period.
 
 ## Proposed Changes
 
-### 1. Backend (`orders` app)
+### 1. Backend Development (`billing` app)
 
-#### [MODIFY] [serializers.py](file:///F:/hotel management/hotel-system/backend/apps/orders/serializers.py)
-- Update `OrderSerializer.create`:
-    - Check if the table has an active order (Status: PENDING, PREPARING, SERVED).
-    - If found, redirect the logic to the `update` method of that existing order.
-    - If not found, create a new order as usual.
+#### [MODIFY] [views.py](file:///F:/hotel management/hotel-system/backend/apps/billing/views.py)
+- **Hierarchy Data**: Update `revenue_stats` to return daily totals for the **entire current year**.
+- **Excel Export**: Add a new action `export_revenue_excel`:
+    - Generate an `.xlsx` file using `openpyxl`.
+    - Format data into multiple sheets for readability.
+    - Return the file as a downloadable response.
 
-### 2. Data Migration / Cleanup
+### 2. Web Admin Frontend
 
-#### [NEW] [merge_orders.py](file:///F:/hotel management/hotel-system/backend/merge_orders.py)
-- A script to find tables with multiple active orders and move all `OrderItems` to the oldest order, then delete the duplicates.
-
-### 3. Web Admin Dashboard
-
-#### [MODIFY] [Overview.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Overview.tsx)
-- No major code changes needed, but ensuring only one card per table will resolve the UI clutter seen in the screenshot.
+#### [MODIFY] [Reports.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Reports.tsx)
+- **Annual History Tab**:
+    - Build an expandable **Month > Day** list using an Accordion UI.
+    - Integrate the existing "Individual Bills" modal into the daily level of the hierarchy.
+- **Excel Download Button**:
+    - Add a **"Download Report (.xlsx)"** button at the top of the Reports page.
+    - Link it to the new backend export endpoint.
 
 ## Verification Plan
 
 ### Automated Tests
-- Verify that calling POST `/orders/` twice for the same table resulting in only ONE order entry in the database.
+- Verify the API correctly generates and serves a valid `.xlsx` file.
 
 ### Manual Verification
-1. Place an order for Table 1.
-2. Place another order for Table 1 with different items.
-3. Check the Dashboard: Verify only **one card** exists for Table 1 containing all items.
-4. Click "Bill Table" and verify the bill is generated successfully without error.
+1. Open **Revenue Reports**.
+2. Expand a month and verify the daily list appears.
+3. Click the arrow on a day and verify the bill list modal opens.
+4. Click **"Download Report"** and verify that the Excel file downloads and contains accurate transaction data.

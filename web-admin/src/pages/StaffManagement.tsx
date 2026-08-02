@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { UserPlus, Trash2, Loader2, ShieldCheck, Phone, User as UserIcon, X } from 'lucide-react';
+import { UserPlus, Trash2, Loader2, ShieldCheck, Phone, User as UserIcon, X, Users, CalendarCheck, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AttendanceSection from '@/components/staff/AttendanceSection';
+import PaymentSection from '@/components/staff/PaymentSection';
 
 interface StaffMember {
   id: number;
@@ -16,6 +18,7 @@ export default function StaffManagement() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsMobileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'list' | 'attendance' | 'payments'>('list');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -75,83 +78,118 @@ export default function StaffManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h2 className="text-xl font-semibold text-slate-800">Staff Management</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Add, manage, and assign roles to your restaurant employees.
+          <h2 className="text-xl font-semibold text-slate-800 uppercase tracking-tight">Staff Management</h2>
+          <p className="mt-1 text-sm text-slate-500 font-medium italic">
+            Monitor attendance, process payments, and manage your restaurant team.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <button
-            onClick={() => setIsMobileOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-          >
-            <UserPlus className="-ml-1 mr-2 h-5 w-5" />
-            Add Employee
-          </button>
-        </div>
+        {activeTab === 'list' && (
+            <div className="mt-4 sm:mt-0">
+                <button
+                    onClick={() => setIsMobileOpen(true)}
+                    className="inline-flex items-center px-6 py-3 border border-transparent rounded-2xl shadow-lg shadow-indigo-100 text-sm font-black text-white bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95"
+                >
+                    <UserPlus className="-ml-1 mr-2 h-5 w-5" />
+                    New Employee
+                </button>
+            </div>
+        )}
       </div>
 
-      <div className="bg-white shadow-sm rounded-2xl border border-slate-200 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                  <th className="relative px-6 py-3"><span className="sr-only">Delete</span></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-100">
-                {staff.map((member) => (
-                  <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-                          {member.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{member.first_name} {member.last_name}</div>
-                          <div className="text-xs text-slate-400">@{member.username}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                        member.role === 'ADMIN' ? "bg-purple-50 text-purple-700 border-purple-200" :
-                        member.role === 'MANAGER' ? "bg-blue-50 text-blue-700 border-blue-200" :
-                        "bg-slate-50 text-slate-600 border-slate-200"
-                      )}>
-                        <ShieldCheck className="w-3 h-3" />
-                        {member.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3 h-3" />
-                        {member.phone_number || 'N/A'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleDelete(member.id)}
-                        className="text-slate-400 hover:text-rose-600 transition-colors p-1"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="bg-white shadow-xl shadow-slate-100/50 rounded-[2.5rem] border-2 border-slate-50 overflow-hidden flex flex-col">
+        <div className="border-b-2 border-slate-50 p-2">
+          <nav className="flex gap-2" aria-label="Tabs">
+            {[
+                { id: 'list', label: 'Staff List', icon: Users },
+                { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+                { id: 'payments', label: 'Payment Records', icon: Wallet },
+            ].map((tab) => (
+                <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={cn(
+                        "flex-1 py-4 px-1 text-center font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 rounded-2xl",
+                        activeTab === tab.id
+                            ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
+                            : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                    )}
+                >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="p-8">
+            {activeTab === 'list' && (
+                <>
+                {loading ? (
+                    <div className="flex justify-center py-12">
+                        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-100">
+                            <thead className="bg-slate-50/50">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                                    <th className="relative px-6 py-4"><span className="sr-only">Delete</span></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {staff.map((member) => (
+                                    <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 font-black text-sm border-2 border-white shadow-sm">
+                                                    {member.username.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-black text-slate-800">{member.first_name} {member.last_name}</div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">@{member.username}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap">
+                                            <span className={cn(
+                                                "inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black tracking-widest uppercase border-2",
+                                                member.role === 'ADMIN' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                member.role === 'MANAGER' ? "bg-blue-50 text-blue-700 border-blue-100" :
+                                                "bg-slate-50 text-slate-600 border-slate-200"
+                                            )}>
+                                                <ShieldCheck className="w-3 h-3" />
+                                                {member.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap text-xs font-bold text-slate-500">
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="w-3.5 h-3.5 text-slate-300" />
+                                                {member.phone_number || 'No Contact'}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                                            <button
+                                                onClick={() => handleDelete(member.id)}
+                                                className="text-slate-300 hover:text-rose-600 transition-all p-2 rounded-xl hover:bg-rose-50"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                </>
+            )}
+
+            {activeTab === 'attendance' && <AttendanceSection />}
+            {activeTab === 'payments' && <PaymentSection />}
+        </div>
       </div>
 
       {isModalOpen && (

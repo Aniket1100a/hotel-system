@@ -26,6 +26,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             qs = qs.filter(table_id=table_param)
         return qs
 
+    @action(detail=True, methods=['post'])
+    def mark_handed_over(self, request, pk=None):
+        order = self.get_object()
+        order.is_handed_over = True
+        order.save()
+        return Response({'status': 'order marked as handed over'})
+
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()

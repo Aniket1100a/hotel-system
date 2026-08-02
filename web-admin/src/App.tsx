@@ -11,6 +11,9 @@ import Overview from './pages/Overview';
 import MenuManagement from './pages/MenuManagement';
 import Billing from './pages/Billing';
 import StaffManagement from './pages/StaffManagement';
+import Inventory from './pages/Inventory';
+import TableManagement from './pages/TableManagement';
+import Reports from './pages/Reports';
 
 export default function App() {
   return (
@@ -23,6 +26,9 @@ export default function App() {
             <Route path="/menu" element={<MenuManagement />} />
             <Route path="/billing" element={<Billing />} />
             <Route path="/staff" element={<StaffManagement />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/tables" element={<TableManagement />} />
+            <Route path="/reports" element={<Reports />} />
           </Route>
         </Routes>
       </AuthProvider>

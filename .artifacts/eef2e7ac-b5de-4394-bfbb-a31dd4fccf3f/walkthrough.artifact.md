@@ -1,32 +1,35 @@
-# Walkthrough - Single Table Billing & Error Fix
+# Walkthrough - Advanced Revenue Analytics
 
-I have optimized the ordering system to ensure each table maintains a single "Tab" (Order) and fixed the billing error you encountered.
+I have implemented a high-power financial reporting system that gives you complete control over your business history and auditing.
 
-## Key Fixes
+## Hierarchical Reporting Structure
 
-### 1. Automatic Order Merging
-Waiters can now add items to a table multiple times, and the system will automatically group them into the **same order ID**.
-- **Before**: Every "Send Order" click created a new Order ID, leading to multiple cards for the same table.
-- **After**: The system checks if a table already has an active order and simply appends new items to it.
+The reports are now organized into a logical "Drill-down" hierarchy:
 
-### 2. "Error generating bill" Resolved
-The error shown in your screenshot was caused by a technical mismatch in how the backend calculated taxes (multiplying decimals with floats).
-- I have updated the calculation logic to use strict **Decimal precision**, ensuring reliable totals and fixing the "Bill Table" button.
+### 1. Year > Month View
+- Navigate through all months of the current year.
+- See total revenue for each month at a glance.
+- Click a month to expand its daily details.
 
-### 3. Dashboard Cleanup
-I ran a cleanup script that merged your existing duplicate orders into single table cards. Your dashboard should now look clean and organized.
+### 2. Month > Day View
+- Once a month is expanded, see every individual date that had sales.
+- View daily totals and the specific day of the week.
 
-## Verification Results
+### 3. Day > Individual Bills
+- Clicking the arrow (`>`) next to any date opens a detailed modal.
+- See every single bill (Bill No, Table/Takeaway, Waiter, Amount, and Payment Mode) for that specific day.
 
-- **Order Merging**: Verified via API that multiple POST requests for the same table results in a single growing order.
-- **Billing Logic**: Verified via shell simulation that "Bill Table" successfully generates an invoice and marks the order as `BILLED`.
-- **UI Experience**: The dashboard now only shows one card per active table, preventing clutter.
+---
 
-## How to Verify
+## Access Control Reminder
+- **Owner & Manager Only**: These reports remain strictly confidential and are not visible to Waiters or Cashiers.
 
-1. **Open Dashboard**: Go to [http://localhost:3000](http://localhost:3000).
-2. **One Card per Table**: You should see only one card for Table 1 (containing all your previous test items).
-3. **Bill Table**: Click **"Bill Table"** on any active order. It will now work perfectly and move the order to the **Billing & Orders** page.
+## How to Test
+
+1. Go to **Revenue Reports**.
+2. Switch to **Annual History**.
+3. Expand a previous month (e.g., June or July).
+4. Click the arrow icon for any day to view the bills.
 
 > [!TIP]
-> This "Single Tab" approach makes it much easier for the Cashier to close a table, as they only need to process one bill for the entire stay.
+> This hierarchy makes it incredibly easy to find "that one specific bill" from 2 weeks ago without searching through thousands of records manually!

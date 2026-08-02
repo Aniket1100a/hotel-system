@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.accounts.permissions import IsAdminOrManager
 from .models import DiningTable, TableSection
 from .serializers import DiningTableSerializer, TableSectionSerializer
 
@@ -9,7 +10,7 @@ from .serializers import DiningTableSerializer, TableSectionSerializer
 class TableSectionViewSet(viewsets.ModelViewSet):
     queryset = TableSection.objects.all()
     serializer_class = TableSectionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
 
 
 class DiningTableViewSet(viewsets.ModelViewSet):
@@ -17,7 +18,7 @@ class DiningTableViewSet(viewsets.ModelViewSet):
     marking a table OCCUPIED when they seat guests)."""
     queryset = DiningTable.objects.all().select_related('section')
     serializer_class = DiningTableSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     @action(detail=True, methods=['post'])
     def close_table(self, request, pk=None):

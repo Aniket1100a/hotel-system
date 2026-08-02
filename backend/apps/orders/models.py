@@ -12,10 +12,16 @@ class Order(models.Model):
         BILLED = 'BILLED', 'Billed'
         CANCELLED = 'CANCELLED', 'Cancelled'
 
-    table = models.ForeignKey(DiningTable, on_delete=models.PROTECT, related_name='orders')
+    class OrderType(models.TextChoices):
+        DINE_IN = 'DINE_IN', 'Dine In'
+        TAKEAWAY = 'TAKEAWAY', 'Takeaway'
+
+    table = models.ForeignKey(DiningTable, on_delete=models.PROTECT, related_name='orders', null=True, blank=True)
     waiter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orders_taken')
+    order_type = models.CharField(max_length=10, choices=OrderType.choices, default=OrderType.DINE_IN)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     notes = models.TextField(blank=True)
+    is_handed_over = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
