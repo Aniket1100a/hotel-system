@@ -5,11 +5,13 @@ from .models import Order, OrderItem
 
 class OrderItemSerializer(serializers.ModelSerializer):
     menu_item_name = serializers.CharField(source='menu_item.name', read_only=True)
+    linked_inventory_item_name = serializers.CharField(source='menu_item.linked_inventory_item.name', read_only=True)
+    inventory_deduction_quantity = serializers.DecimalField(max_digits=10, decimal_places=2, source='menu_item.inventory_deduction_quantity', read_only=True)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'menu_item', 'menu_item_name', 'quantity', 'price_at_order', 'note', 'subtotal', 'status']
+        fields = ['id', 'menu_item', 'menu_item_name', 'linked_inventory_item_name', 'inventory_deduction_quantity', 'quantity', 'price_at_order', 'note', 'subtotal', 'status']
         read_only_fields = ['price_at_order']
 
 
@@ -25,6 +27,46 @@ class OrderSerializer(serializers.ModelSerializer):
                   'notes', 'is_handed_over', 'items', 'total_amount', 'created_at', 'updated_at']
         read_only_fields = ['waiter']
 
+    def _deduct_inventory(self, menu_item, quantity, user, order):
+        linked_item = menu_item.linked_inventory_item
+        if not linked_item:
+            return
+
+        deduction = menu_item.inventory_deduction_quantity * quantity
+        linked_item.current_stock = max(linked_item.current_stock - deduction, 0)
+        linked_item.save(update_fields=['current_stock'])
+
+        from apps.inventory.models import StockLog
+        StockLog.objects.create(
+            item=linked_item,
+            quantity=-deduction,
+            change_type='USAGE',
+            user=user,
+            notes=f"Auto-deducted for Order #{order.id}",
+        )
+
+    def _create_order_items(self, order, items_data, user):
+        for item_data in items_data:
+            menu_item = item_data['menu_item']
+            quantity = item_data['quantity']
+            note = item_data.get('note', '')
+
+            existing_item = order.items.filter(menu_item=menu_item, note=note).first()
+            if existing_item:
+                existing_item.quantity += quantity
+                existing_item.save(update_fields=['quantity'])
+                order_item = existing_item
+            else:
+                order_item = OrderItem.objects.create(
+                    order=order,
+                    menu_item=menu_item,
+                    quantity=quantity,
+                    note=note,
+                    price_at_order=menu_item.price,
+                )
+
+            self._deduct_inventory(menu_item, quantity, user, order)
+
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         table = validated_data.get('table')
@@ -39,32 +81,16 @@ class OrderSerializer(serializers.ModelSerializer):
 
             if existing_order:
                 # Add new items to existing order instead of creating a new one
-                for item_data in items_data:
-                    OrderItem.objects.create(
-                        order=existing_order,
-                        menu_item=item_data['menu_item'],
-                        quantity=item_data['quantity'],
-                        note=item_data.get('note', ''),
-                        price_at_order=item_data['menu_item'].price,
-                    )
+                self._create_order_items(existing_order, items_data, request.user)
                 return existing_order
 
-        # Standard creation if no active order exists
         order = Order.objects.create(waiter=request.user, **validated_data)
 
-        # Auto-occupy table if it's DINE_IN
         if order.order_type == 'DINE_IN' and order.table:
             order.table.status = 'OCCUPIED'
             order.table.save(update_fields=['status'])
 
-        for item_data in items_data:
-            OrderItem.objects.create(
-                order=order,
-                menu_item=item_data['menu_item'],
-                quantity=item_data['quantity'],
-                note=item_data.get('note', ''),
-                price_at_order=item_data['menu_item'].price,
-            )
+        self._create_order_items(order, items_data, request.user)
         return order
 
     def update(self, instance, validated_data):
@@ -72,15 +98,12 @@ class OrderSerializer(serializers.ModelSerializer):
         request = self.context['request']
         user = request.user
 
-        # 2-minute rule for Waiters
         if user.role == 'WAITER':
             now = timezone.now()
             diff = now - instance.created_at
             if diff.total_seconds() > 120:
-                # After 2 mins, waiters cannot edit existing items
                 pass
 
-        # Update order fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -92,7 +115,6 @@ class OrderSerializer(serializers.ModelSerializer):
                 item_id = item_data.get('id')
                 if item_id and item_id in existing_items:
                     item = existing_items.pop(item_id)
-                    # 2-minute rule check for modification
                     if user.role == 'WAITER' and (timezone.now() - instance.created_at).total_seconds() > 120:
                         continue
 
@@ -101,16 +123,25 @@ class OrderSerializer(serializers.ModelSerializer):
                             setattr(item, attr, value)
                     item.save()
                 else:
-                    # Create new item
-                    OrderItem.objects.create(
-                        order=instance,
-                        menu_item=item_data['menu_item'],
-                        quantity=item_data['quantity'],
-                        note=item_data.get('note', ''),
-                        price_at_order=item_data['menu_item'].price,
-                    )
+                    menu_item = item_data['menu_item']
+                    quantity = item_data['quantity']
+                    note = item_data.get('note', '')
 
-            # 2-minute rule check for deletion
+                    existing_item = instance.items.filter(menu_item=menu_item, note=note).first()
+                    if existing_item:
+                        existing_item.quantity += quantity
+                        existing_item.save(update_fields=['quantity'])
+                        self._deduct_inventory(menu_item, quantity, user, instance)
+                    else:
+                        order_item = OrderItem.objects.create(
+                            order=instance,
+                            menu_item=menu_item,
+                            quantity=quantity,
+                            note=note,
+                            price_at_order=menu_item.price,
+                        )
+                        self._deduct_inventory(order_item.menu_item, order_item.quantity, user, instance)
+
             if user.role != 'WAITER' or (timezone.now() - instance.created_at).total_seconds() <= 120:
                 for item in existing_items.values():
                     item.delete()

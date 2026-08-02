@@ -30,8 +30,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // menuItemId -> quantity
   final Map<int, int> _cart = {};
 
-  bool _loading = true;
-  bool _fetchingOrders = false;
   bool _connected = true;
   String? _error;
 
@@ -43,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     setState(() {
-      _loading = true;
       _error = null;
     });
     try {
@@ -61,20 +58,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _connected = false;
         _error = 'Could not reach the server.\nCheck the WiFi connection and the API address in api_config.dart.';
       });
-    } finally {
-      setState(() => _loading = false);
     }
   }
 
   Future<void> _fetchActiveOrders(int tableId) async {
-    setState(() => _fetchingOrders = true);
     try {
       final orders = await _apiService.fetchActiveOrders(tableId);
       setState(() => _activeOrders = orders);
     } catch (e) {
-      print('Error fetching active orders: $e');
-    } finally {
-      setState(() => _fetchingOrders = false);
+      if (!mounted) return;
+      setState(() => _activeOrders = []);
     }
   }
 
@@ -158,11 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _error != null
-              ? _buildErrorState()
-              : _buildOrderTaking(),
+      body: _error != null
+          ? _buildErrorState()
+          : _buildOrderTaking(),
     );
   }
 

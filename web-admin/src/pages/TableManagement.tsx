@@ -66,8 +66,9 @@ export default function TableManagement() {
     e.preventDefault();
     try {
       const payload = {
-        ...tableForm,
-        section: tableForm.section || null
+        number: tableForm.number,
+        capacity: Number(tableForm.capacity),
+        section: tableForm.section ? Number(tableForm.section) : null,
       };
 
       if (editingTable) {
@@ -78,9 +79,10 @@ export default function TableManagement() {
 
       closeTableModal();
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving table:", error);
-      alert("Failed to save table. Ensure the number is unique.");
+      const message = error?.response?.data?.detail || "Failed to save table. Ensure the number is unique.";
+      alert(message);
     }
   };
 

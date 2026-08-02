@@ -17,10 +17,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().order_by('-created_at')
         status_param = self.request.query_params.get('status')
         if status_param:
-            qs = qs.filter(status=status_param)
+            statuses = [value.strip().upper() for value in status_param.split(',') if value.strip()]
+            if statuses:
+                qs = qs.filter(status__in=statuses)
         table_param = self.request.query_params.get('table')
         if table_param:
             qs = qs.filter(table_id=table_param)

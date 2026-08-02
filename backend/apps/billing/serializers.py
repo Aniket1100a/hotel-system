@@ -37,24 +37,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             is_paid=True,  # Set to PAID immediately
         )
 
-        # --- AUTO-DEDUCT INVENTORY ---
-        from apps.inventory.models import InventoryItem, StockLog
-        for item in order.items.all():
-            linked_item = item.menu_item.linked_inventory_item
-            if linked_item:
-                deduction = item.menu_item.inventory_deduction_quantity * item.quantity
-                linked_item.current_stock -= deduction
-                linked_item.save()
-
-                # Log the deduction
-                StockLog.objects.create(
-                    item=linked_item,
-                    quantity=-deduction,
-                    change_type='USAGE',
-                    user=request.user,
-                    notes=f"Auto-deducted for Order #{order.id}"
-                )
-
         # Update order status
         order.status = order.Status.BILLED
         order.save(update_fields=['status'])
