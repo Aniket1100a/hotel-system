@@ -1,5 +1,6 @@
 class OrderItem {
   final int id;
+  final int menuItemId;
   final String menuItemName;
   final int quantity;
   final double subtotal;
@@ -7,6 +8,7 @@ class OrderItem {
 
   OrderItem({
     required this.id,
+    required this.menuItemId,
     required this.menuItemName,
     required this.quantity,
     required this.subtotal,
@@ -16,6 +18,7 @@ class OrderItem {
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
       id: json['id'],
+      menuItemId: json['menu_item'],
       menuItemName: json['menu_item_name'],
       quantity: json['quantity'],
       subtotal: double.parse(json['subtotal'].toString()),
@@ -55,7 +58,7 @@ class Order {
   }
 
   bool get canEdit {
-    final now = DateTime.now();
-    return now.difference(createdAt).inMinutes < 2;
+    // Waiters can edit until it's PAID or CANCELLED
+    return status != 'PAID' && status != 'CANCELLED';
   }
 }

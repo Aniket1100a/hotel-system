@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { X, Search, ShoppingCart, Plus, Minus, Trash2, Loader2, Utensils, Store } from 'lucide-react';
+import { X, Search, ShoppingCart, Plus, Minus, Trash2, Loader2, Utensils, Store, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OrderDrawerProps {
@@ -15,7 +15,7 @@ interface OrderDrawerProps {
 export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrderPlaced, isTakeaway = false }: OrderDrawerProps) {
   const [menu, setMenu] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number}}>({});
+  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number, is_veg: boolean}}>({});
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
 
@@ -43,7 +43,8 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
       [item.id]: {
         name: item.name,
         price: parseFloat(item.price),
-        quantity: (prev[item.id]?.quantity || 0) + 1
+        quantity: (prev[item.id]?.quantity || 0) + 1,
+        is_veg: item.is_veg
       }
     }));
   };
@@ -91,14 +92,13 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
       onClose();
     } catch (err) {
       console.error("Error placing order:", err);
-      alert("Failed to place order.");
     } finally {
       setPlacing(false);
     }
   };
 
   const filteredMenu = menu.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()) && item.is_available
+    item.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -114,111 +114,148 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
 
       {/* Drawer */}
       <aside className={cn(
-        "fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-out flex flex-col",
+        "fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-out flex flex-col",
         isOpen ? "translate-x-0" : "translate-x-full"
       )}>
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              {isTakeaway ? <Store className="w-5 h-5" /> : <Utensils className="w-5 h-5" />}
+        {/* Header */}
+        <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-4">
+            <div className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100",
+                isTakeaway ? "bg-slate-800" : "bg-primary-600"
+            )}>
+              {isTakeaway ? <Store className="w-6 h-6" /> : <Utensils className="w-6 h-6" />}
             </div>
             <div>
-              <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">
-                {isTakeaway ? 'Takeaway Order' : `Table #${tableName}`}
+              <h3 className="font-bold text-slate-900 text-[18px] tracking-tight">
+                {isTakeaway ? 'Takeaway Console' : `Table #${tableName} Selection`}
               </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">New Order Entry</p>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Digital Order Interface</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-50 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2.5 text-slate-400 hover:bg-slate-100 rounded-full transition-all">
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Menu Search */}
-          <div className="p-6 border-b border-slate-50">
-            <div className="relative">
-              <Search className="absolute left-4 top-3 h-5 w-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search food or beverages..."
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+        <div className="flex-1 flex overflow-hidden">
+          {/* Menu Side (Left) */}
+          <div className="flex-1 flex flex-col border-r border-slate-100 bg-[#F8FAFC]">
+            <div className="p-6 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search item catalog..."
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[14px] font-medium focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="flex-1 flex overflow-hidden">
-            {/* Menu List */}
-            <div className="w-1/2 border-r border-slate-100 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
               {loading ? (
-                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest">Syncing Menu...</p>
+                </div>
               ) : (
                 filteredMenu.map(item => (
                   <button
                     key={item.id}
                     onClick={() => addToCart(item)}
-                    className="w-full text-left bg-white p-3 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all group active:scale-95"
+                    className="w-full text-left bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all group active:scale-95 flex items-center justify-between"
                   >
-                    <p className="font-bold text-slate-800 text-sm leading-tight">{item.name}</p>
-                    <p className="text-indigo-600 font-black text-xs mt-1">₹{item.price}</p>
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Plus className="w-4 h-4 text-indigo-500" />
+                    <div className="flex items-center gap-3">
+                        <div className={cn("w-2 h-2 rounded-full", item.is_veg ? "bg-emerald-500" : "bg-rose-500")}></div>
+                        <div>
+                            <p className="font-bold text-slate-800 text-[14px] leading-tight">{item.name}</p>
+                            <p className="text-[11px] text-slate-400 font-medium mt-1 uppercase tracking-wider">₹{item.price}</p>
+                        </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all">
+                        <Plus className="w-4 h-4" />
                     </div>
                   </button>
                 ))
               )}
             </div>
+          </div>
 
-            {/* Cart */}
-            <div className="w-1/2 flex flex-col bg-white">
-              <div className="px-4 py-3 border-b border-slate-50 flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Cart</span>
-                <ShoppingCart className="w-3.5 h-3.5 text-slate-300" />
+          {/* Cart Side (Right) */}
+          <div className="w-[320px] flex flex-col bg-white">
+            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-primary-600" />
+                <span className="text-[12px] font-bold text-slate-800 uppercase tracking-wider">Current Selection</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {Object.entries(cart).map(([id, data]) => (
-                  <div key={id} className="flex flex-col gap-2">
-                    <div className="flex justify-between items-start">
-                      <p className="text-xs font-bold text-slate-800 leading-tight flex-1">{data.name}</p>
-                      <button onClick={() => deleteFromCart(parseInt(id))} className="text-slate-300 hover:text-rose-500 ml-2">
-                        <Trash2 className="w-3 h-3" />
+              <span className="text-[11px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
+                {Object.keys(cart).length} Items
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {Object.entries(cart).map(([id, data]) => (
+                <div key={id} className="space-y-3">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1">
+                        <p className="text-[13px] font-bold text-slate-800 leading-tight">{data.name}</p>
+                        <p className="text-[11px] text-slate-400 font-semibold mt-0.5">₹{data.price} unit price</p>
+                    </div>
+                    <button onClick={() => deleteFromCart(parseInt(id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => removeFromCart(parseInt(id))} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-[13px] font-bold text-slate-700 w-6 text-center">{data.quantity}</span>
+                      <button onClick={() => addToCart({id, name: data.name, price: data.price, is_veg: data.is_veg})} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm">
+                        <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-1">
-                        <button onClick={() => removeFromCart(parseInt(id))} className="p-1 hover:bg-white rounded shadow-sm transition-all"><Minus className="w-3 h-3" /></button>
-                        <span className="text-xs font-black w-4 text-center">{data.quantity}</span>
-                        <button onClick={() => addToCart({id, name: data.name, price: data.price})} className="p-1 hover:bg-white rounded shadow-sm transition-all"><Plus className="w-3 h-3" /></button>
-                      </div>
-                      <p className="text-xs font-bold text-slate-600">₹{data.price * data.quantity}</p>
-                    </div>
+                    <p className="text-[13px] font-bold text-slate-900">₹{(data.price * data.quantity).toLocaleString()}</p>
                   </div>
-                ))}
-                {Object.keys(cart).length === 0 && (
-                   <div className="text-center py-20">
-                     <ShoppingCart className="w-10 h-10 text-slate-100 mx-auto mb-3" />
-                     <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Cart is empty</p>
+                </div>
+              ))}
+
+              {Object.keys(cart).length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-20 text-center">
+                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                     <ShoppingCart className="w-8 h-8 text-slate-200" />
                    </div>
-                )}
+                   <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Cart is empty</p>
+                   <p className="text-[11px] text-slate-300 font-medium mt-1">Select items from the menu <br/>to build an order.</p>
+                 </div>
+              )}
+            </div>
+
+            {/* Footer / Summary */}
+            <div className="p-6 bg-slate-50/50 border-t border-slate-100 space-y-4 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Sub-Total Amount</span>
+                <span className="text-2xl font-bold text-slate-900 tracking-tight">₹{totalAmount.toLocaleString()}</span>
               </div>
+              <button
+                disabled={Object.keys(cart).length === 0 || placing}
+                onClick={handlePlaceOrder}
+                className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 text-white font-bold py-4 rounded-2xl shadow-lg shadow-primary-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+              >
+                {placing ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                    <>
+                        <span>Initialize Order Dispatch</span>
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                )}
+              </button>
+              <p className="text-[10px] text-slate-400 text-center font-medium">Items will be sent to Kitchen Display immediately.</p>
             </div>
           </div>
-        </div>
-
-        <div className="p-6 bg-white border-t border-slate-100 space-y-4 shadow-[0_-10px_20px_-15px_rgba(0,0,0,0.1)]">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-slate-400 uppercase">Total Payable</span>
-            <span className="text-2xl font-black text-slate-900 tracking-tighter">₹{totalAmount.toLocaleString()}</span>
-          </div>
-          <button
-            disabled={Object.keys(cart).length === 0 || placing}
-            onClick={handlePlaceOrder}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white font-black py-4 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
-          >
-            {placing ? <Loader2 className="animate-spin" /> : 'Confirm & Place Order'}
-          </button>
         </div>
       </aside>
     </>

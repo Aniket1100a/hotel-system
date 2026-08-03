@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { Plus, Edit2, Trash2, Loader2, X, LayoutGrid, Square, Users, ArrowUpDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, X, LayoutGrid, Square, Users, ArrowUpDown, Search, Map as MapIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Section {
@@ -23,6 +23,7 @@ export default function TableManagement() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'tables' | 'sections'>('tables');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal states
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
@@ -81,8 +82,6 @@ export default function TableManagement() {
       fetchData();
     } catch (error: any) {
       console.error("Error saving table:", error);
-      const message = error?.response?.data?.detail || "Failed to save table. Ensure the number is unique.";
-      alert(message);
     }
   };
 
@@ -98,7 +97,6 @@ export default function TableManagement() {
       fetchData();
     } catch (error) {
       console.error("Error saving section:", error);
-      alert("Failed to save section.");
     }
   };
 
@@ -147,212 +145,264 @@ export default function TableManagement() {
       await api.delete(`/tables/${id}/`);
       fetchData();
     } catch (error) {
-      alert("Cannot delete table with active orders.");
+      console.error("Delete failed:", error);
     }
   };
 
   const handleDeleteSection = async (id: number) => {
-    if (!window.confirm("Delete this section? Tables in it will be unassigned.")) return;
+    if (!window.confirm("Delete this floor section?")) return;
     try {
       await api.delete(`/tables/sections/${id}/`);
       fetchData();
     } catch (error) {
-      console.error("Error deleting section:", error);
+      console.error("Delete failed:", error);
     }
   };
 
+  const filteredTables = tables.filter(t =>
+    t.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.section_name && t.section_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-800">Table Management</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Organize your restaurant floor and seating capacity.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Floor & Seating</h1>
+          <p className="text-slate-500 text-sm font-medium mt-0.5">
+            Configure restaurant sections and individual table capacities.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => activeTab === 'tables' ? openTableModal() : openSectionModal()}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+            className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-primary-700 transition-all active:scale-95"
           >
-            <Plus className="-ml-1 mr-2 h-5 w-5" />
-            Add {activeTab === 'tables' ? 'Table' : 'Section'}
+            <Plus className="w-4 h-4" />
+            Add {activeTab === 'tables' ? 'New Table' : 'Section'}
           </button>
         </div>
       </div>
 
-      <div className="bg-white shadow-sm rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="border-b border-slate-100">
-          <nav className="-mb-px flex" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('tables')}
-              className={cn(
-                "w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors flex items-center justify-center gap-2",
-                activeTab === 'tables'
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-              )}
-            >
-              <Square className="w-4 h-4" />
-              Dining Tables
-            </button>
-            <button
-              onClick={() => setActiveTab('sections')}
-              className={cn(
-                "w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors flex items-center justify-center gap-2",
-                activeTab === 'sections'
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-              )}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Floor Sections
-            </button>
-          </nav>
+      {/* Tabs & Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center p-1 bg-slate-50 rounded-xl w-full sm:w-auto">
+          <button
+            onClick={() => setActiveTab('tables')}
+            className={cn(
+              "px-6 py-2 text-[13px] font-bold rounded-lg transition-all flex items-center gap-2",
+              activeTab === 'tables' ? "bg-white text-primary-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Square className="w-4 h-4" />
+            Dining Tables
+          </button>
+          <button
+            onClick={() => setActiveTab('sections')}
+            className={cn(
+              "px-6 py-2 text-[13px] font-bold rounded-lg transition-all flex items-center gap-2",
+              activeTab === 'sections' ? "bg-white text-primary-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Floor Sections
+          </button>
         </div>
 
-        <div className="p-4 sm:p-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-          ) : activeTab === 'tables' ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Table No.</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Section</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Capacity</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
-                  {tables.map((table) => (
-                    <tr key={table.id} className="hover:bg-slate-50 transition-colors group">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
-                        #{table.number}
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search floor map..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Content Container */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-4" />
+            <p className="text-slate-400 text-sm font-medium">Synchronizing floor plan...</p>
+          </div>
+        ) : activeTab === 'tables' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Identity</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Floor Section</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Capacity</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Status</th>
+                  <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredTables.length > 0 ? (
+                  filteredTables.map((table) => (
+                    <tr key={table.id} className="hover:bg-slate-50/30 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm border",
+                            table.status === 'FREE' ? "bg-white text-slate-400 border-slate-200" : "bg-primary-600 text-white border-primary-600"
+                          )}>
+                            {table.number}
+                          </div>
+                          <span className="text-[14px] font-bold text-slate-800">Table {table.number}</span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        {table.section_name || <span className="text-slate-300 italic">Unassigned</span>}
+                      <td className="px-6 py-4">
+                        <span className="text-[13px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {table.section_name || 'Global Floor'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-slate-500 font-medium text-[13px]">
                           <Users className="w-3.5 h-3.5" />
                           {table.capacity} Persons
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <span className={cn(
-                          "px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border",
-                          table.status === 'FREE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          table.status === 'OCCUPIED' ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
-                          "bg-amber-50 text-amber-700 border-amber-200"
+                          "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                          table.status === 'FREE' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                          table.status === 'OCCUPIED' ? "bg-primary-50 text-primary-700 border-primary-100" :
+                          "bg-amber-50 text-amber-700 border-amber-100"
                         )}>
                           {table.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => openTableModal(table)}
-                          className="text-slate-400 hover:text-indigo-600 transition-colors p-1"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTable(table.id)}
-                          className="text-slate-400 hover:text-rose-600 transition-colors p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="px-6 py-4 text-right">
+                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openTableModal(table)}
+                              className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTable(table.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sections.map((sec) => (
-                <div key={sec.id} className="group border-2 border-slate-50 rounded-2xl p-5 flex items-center justify-between hover:border-indigo-100 hover:bg-indigo-50/30 transition-all bg-white shadow-sm">
-                  <div className="flex flex-col">
-                    <span className="font-black text-slate-800 tracking-tight text-lg">{sec.name}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                      Order: {sec.display_order}
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => openSectionModal(sec)}
-                      className="text-slate-300 hover:text-indigo-600 p-2 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSection(sec.id)}
-                      className="text-slate-300 hover:text-rose-600 p-2 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center">
+                        <Square className="w-12 h-12 text-slate-100 mb-4" />
+                        <h3 className="text-slate-800 font-bold">No tables defined</h3>
+                        <p className="text-slate-400 text-sm font-medium mt-1">Start by adding your first dining table.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {sections.map((sec) => (
+              <div key={sec.id} className="group p-6 bg-white border border-slate-200 rounded-2xl hover:border-primary-200 hover:shadow-lg transition-all flex flex-col justify-between h-40">
+                <div className="flex items-start justify-between">
+                   <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all">
+                      <MapIcon className="w-6 h-6" />
+                   </div>
+                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openSectionModal(sec)} className="p-1.5 text-slate-400 hover:text-primary-600 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteSection(sec.id)} className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div>
+                   <h4 className="font-bold text-slate-900 text-lg leading-tight">{sec.name}</h4>
+                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                     Display Index: {sec.display_order}
+                   </p>
+                </div>
+              </div>
+            ))}
+            {sections.length === 0 && (
+               <div className="col-span-full py-20 text-center">
+                  <LayoutGrid className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                  <p className="text-slate-400 text-sm font-medium">No floor sections created yet.</p>
+               </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table Modal */}
       {isTableModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-lg">{editingTable ? 'Edit' : 'Add'} Dining Table</h3>
-              <button onClick={closeTableModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors">
-                <X className="w-6 h-6" />
-              </button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="font-bold text-slate-900 text-[16px]">{editingTable ? 'Edit Table Settings' : 'Create New Table'}</h3>
+              <button onClick={closeTableModal} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
-            <form onSubmit={handleTableSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase ml-1">Table Number</label>
+            <form onSubmit={handleTableSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Table ID / Number</label>
                   <input
                     required
                     placeholder="e.g. 10"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                     value={tableForm.number}
                     onChange={e => setTableForm({...tableForm, number: e.target.value})}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase ml-1">Capacity</label>
-                  <input
-                    required
-                    type="number"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                    value={tableForm.capacity}
-                    onChange={e => setTableForm({...tableForm, capacity: parseInt(e.target.value)})}
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Max Seating</label>
+                  <div className="relative">
+                    <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      required
+                      type="number"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={tableForm.capacity}
+                      onChange={e => setTableForm({...tableForm, capacity: parseInt(e.target.value)})}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Assign to Section</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Assign Section</label>
                 <select
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none appearance-none"
                   value={tableForm.section}
                   onChange={e => setTableForm({...tableForm, section: e.target.value})}
                 >
-                  <option value="">Select Section...</option>
+                  <option value="">Select Floor Section...</option>
                   {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
 
-              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg mt-4 transition-all">
-                {editingTable ? 'Update Table' : 'Create Table'}
-              </button>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeTableModal}
+                  className="flex-1 px-6 py-3.5 rounded-xl text-[14px] font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] bg-primary-600 hover:bg-primary-700 text-white px-6 py-3.5 rounded-xl text-[14px] font-bold shadow-lg shadow-primary-200 transition-all active:scale-[0.98]"
+                >
+                  {editingTable ? 'Save Changes' : 'Publish Table'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -360,42 +410,45 @@ export default function TableManagement() {
 
       {/* Section Modal */}
       {isSectionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-lg">{editingSection ? 'Edit' : 'New'} Floor Section</h3>
-              <button onClick={closeSectionModal} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors">
-                <X className="w-6 h-6" />
-              </button>
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="font-bold text-slate-900 text-[16px]">{editingSection ? 'Edit Section' : 'Add New Section'}</h3>
+              <button onClick={closeSectionModal} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
-            <form onSubmit={handleSectionSubmit} className="p-6 space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Section Name</label>
-                <input
-                  required
-                  placeholder="e.g. Garden Area"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={sectionForm.name}
-                  onChange={e => setSectionForm({...sectionForm, name: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Display Order</label>
-                <div className="relative">
-                  <ArrowUpDown className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+            <form onSubmit={handleSectionSubmit} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Section Label</label>
                   <input
                     required
-                    type="number"
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                    value={sectionForm.display_order}
-                    onChange={e => setSectionForm({...sectionForm, display_order: parseInt(e.target.value)})}
+                    placeholder="e.g. Roof Top"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    value={sectionForm.name}
+                    onChange={e => setSectionForm({...sectionForm, name: e.target.value})}
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Sort Priority</label>
+                  <div className="relative">
+                    <ArrowUpDown className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      required
+                      type="number"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={sectionForm.display_order}
+                      onChange={e => setSectionForm({...sectionForm, display_order: parseInt(e.target.value)})}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg mt-4 transition-all">
+              <button
+                type="submit"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3.5 rounded-xl text-[14px] font-bold shadow-lg shadow-primary-200 transition-all active:scale-[0.98]"
+              >
                 {editingSection ? 'Update Section' : 'Create Section'}
               </button>
             </form>

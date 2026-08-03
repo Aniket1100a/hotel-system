@@ -98,11 +98,8 @@ class OrderSerializer(serializers.ModelSerializer):
         request = self.context['request']
         user = request.user
 
-        if user.role == 'WAITER':
-            now = timezone.now()
-            diff = now - instance.created_at
-            if diff.total_seconds() > 120:
-                pass
+        if instance.status in ['PAID', 'CANCELLED']:
+             raise serializers.ValidationError("Cannot edit a closed or cancelled order.")
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -115,11 +112,15 @@ class OrderSerializer(serializers.ModelSerializer):
                 item_id = item_data.get('id')
                 if item_id and item_id in existing_items:
                     item = existing_items.pop(item_id)
-                    if user.role == 'WAITER' and (timezone.now() - instance.created_at).total_seconds() > 120:
-                        continue
+
+                    # Handle inventory if quantity changed
+                    new_qty = item_data.get('quantity', item.quantity)
+                    qty_diff = new_qty - item.quantity
+                    if qty_diff != 0:
+                        self._deduct_inventory(item.menu_item, qty_diff, user, instance)
 
                     for attr, value in item_data.items():
-                        if attr != 'id':
+                        if attr != 'id' and attr != 'menu_item':
                             setattr(item, attr, value)
                     item.save()
                 else:
@@ -127,11 +128,18 @@ class OrderSerializer(serializers.ModelSerializer):
                     quantity = item_data['quantity']
                     note = item_data.get('note', '')
 
+                    # Check if this menu_item already exists in the order (but we didn't get an ID)
                     existing_item = instance.items.filter(menu_item=menu_item, note=note).first()
                     if existing_item:
-                        existing_item.quantity += quantity
+                        if existing_item.id in existing_items:
+                            existing_items.pop(existing_item.id)
+
+                        qty_diff = quantity - existing_item.quantity
+                        if qty_diff != 0:
+                            self._deduct_inventory(menu_item, qty_diff, user, instance)
+
+                        existing_item.quantity = quantity
                         existing_item.save(update_fields=['quantity'])
-                        self._deduct_inventory(menu_item, quantity, user, instance)
                     else:
                         order_item = OrderItem.objects.create(
                             order=instance,
@@ -142,8 +150,9 @@ class OrderSerializer(serializers.ModelSerializer):
                         )
                         self._deduct_inventory(order_item.menu_item, order_item.quantity, user, instance)
 
-            if user.role != 'WAITER' or (timezone.now() - instance.created_at).total_seconds() <= 120:
-                for item in existing_items.values():
-                    item.delete()
+            # Items left in existing_items were not in the request, so delete them
+            for item in existing_items.values():
+                self._deduct_inventory(item.menu_item, -item.quantity, user, instance)
+                item.delete()
 
         return instance

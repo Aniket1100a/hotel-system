@@ -3,6 +3,7 @@ class MenuItem {
   final String name;
   final double price;
   final bool isAvailable;
+  final bool isVeg;
   final int categoryId;
 
   MenuItem({
@@ -10,6 +11,7 @@ class MenuItem {
     required this.name,
     required this.price,
     required this.isAvailable,
+    required this.isVeg,
     required this.categoryId,
   });
 
@@ -19,6 +21,7 @@ class MenuItem {
       name: json['name'],
       price: double.parse(json['price'].toString()),
       isAvailable: json['is_available'] ?? true,
+      isVeg: json['is_veg'] ?? true,
       categoryId: json['category'],
     );
   }

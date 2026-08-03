@@ -105,10 +105,28 @@ class ApiService {
         'table': tableId,
         'items': items,
         'notes': notes,
+        'order_type': 'DINE_IN',
       }),
     );
-    if (response.statusCode != 201) {
+    if (response.statusCode != 201 && response.statusCode != 200) {
       throw Exception('Failed to place order: ${response.body}');
+    }
+  }
+
+  /// PUT /orders/ID/ — updates an existing order.
+  Future<void> updateOrder({
+    required int orderId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/orders/$orderId/'),
+      headers: await _authHeaders(),
+      body: jsonEncode({
+        'items': items,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update order: ${response.body}');
     }
   }
 

@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
       );
     } catch (e) {
-      setState(() => _error = 'Incorrect username or password. Please try again.');
+      setState(() => _error = 'Authorization failed. Please verify your credentials.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -50,24 +50,24 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.all(32),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo mark — mirrors the web admin's purple square "H".
+                  // Brand Identity
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.28),
+                          color: AppColors.primary.withOpacity(0.3),
                           blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
@@ -76,113 +76,129 @@ class _LoginScreenState extends State<LoginScreen> {
                       'H',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
                   const Text(
-                    'HOTEL',
+                    'SYSTEM PORTAL',
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   const Text(
-                    'Sign in to start taking orders',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 32),
-
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: AppColors.cardShadow,
+                    'Identify yourself to access order controls',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
                     ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_error != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.dangerSoft,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.error_outline, size: 18, color: AppColors.danger),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _error!,
-                                      style: const TextStyle(fontSize: 13, color: AppColors.danger),
+                  ),
+                  const SizedBox(height: 48),
+
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_error != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.dangerSoft,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.danger.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.shield_outlined, size: 20, color: AppColors.danger),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.danger
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          const Text('USERNAME', style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6, color: AppColors.textSecondary,
-                          )),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _usernameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(hintText: 'e.g. waiter1'),
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text('PASSWORD', style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6, color: AppColors.textSecondary,
-                          )),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            decoration: InputDecoration(
-                              hintText: '••••••••',
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                                  size: 20,
-                                  color: AppColors.textMuted,
                                 ),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                              ),
+                              ],
                             ),
-                            validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                            onFieldSubmitted: (_) => _handleLogin(),
                           ),
                           const SizedBox(height: 24),
-                          AppButton(
-                            label: 'Sign In',
-                            loading: _loading,
-                            onPressed: _handleLogin,
-                          ),
                         ],
-                      ),
+
+                        Text('IDENTIFIER', style: Theme.of(context).textTheme.labelSmall),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _usernameController,
+                          textInputAction: TextInputAction.next,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            hintText: 'User handle',
+                            prefixIcon: const Icon(Icons.alternate_email_rounded, size: 20),
+                            fillColor: Colors.white,
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        Text('ACCESS KEY', style: Theme.of(context).textTheme.labelSmall),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.done,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            hintText: '••••••••',
+                            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                            fillColor: Colors.white,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                size: 20,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                          onFieldSubmitted: (_) => _handleLogin(),
+                        ),
+                        const SizedBox(height: 32),
+
+                        AppButton(
+                          label: 'INITIALIZE SESSION',
+                          loading: _loading,
+                          onPressed: _handleLogin,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Ask your manager if you don\'t have an account yet.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 48),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.security_rounded, size: 14, color: AppColors.textMuted),
+                      SizedBox(width: 8),
+                      Text(
+                        'SECURED LOCAL GATEWAY',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textMuted,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

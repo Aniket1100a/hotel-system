@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// A small rounded pill with a colored dot + label — used for connection
-/// status, table status, order status, etc. Mirrors the "Kitchen Online"
-/// indicator style from the web admin.
 class StatusPill extends StatelessWidget {
   final String label;
   final Color color;
@@ -19,26 +16,28 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: softColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.1), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: 5,
+            height: 5,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
-            label,
+            label.toUpperCase(),
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
               color: color,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -47,7 +46,6 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// Small uppercase tag used for staff roles (e.g. "WAITER").
 class RoleBadge extends StatelessWidget {
   final String role;
   const RoleBadge({super.key, required this.role});
@@ -55,18 +53,18 @@ class RoleBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.primarySoft,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        role,
+        role.toUpperCase(),
         style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
-          color: AppColors.primaryDark,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primary,
+          letterSpacing: 0.5,
         ),
       ),
     );
