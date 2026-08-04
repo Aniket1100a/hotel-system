@@ -286,7 +286,7 @@ export default function Overview() {
         <div className="flex items-center gap-3">
           <button
             onClick={openTakeawayOrder}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-slate-800 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-rose-700 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             Quick Takeaway
