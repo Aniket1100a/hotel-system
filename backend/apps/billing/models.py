@@ -9,6 +9,7 @@ class Invoice(models.Model):
         CARD = 'CARD', 'Card'
         UPI = 'UPI', 'UPI'
 
+    bill_no = models.CharField(max_length=50, unique=True, null=True, blank=True)
     order = models.OneToOneField(Order, on_delete=models.PROTECT, related_name='invoice')
     billed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='invoices_issued')
     discount_approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='discounts_approved')

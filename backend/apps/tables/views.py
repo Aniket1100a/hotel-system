@@ -10,15 +10,15 @@ from .serializers import DiningTableSerializer, TableSectionSerializer
 class TableSectionViewSet(viewsets.ModelViewSet):
     queryset = TableSection.objects.all()
     serializer_class = TableSectionSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrManager]
+    permission_classes = [IsAdminOrManager]
 
 
 class DiningTableViewSet(viewsets.ModelViewSet):
-    """All authenticated roles can view/update table status (e.g. a waiter
-    marking a table OCCUPIED when they seat guests)."""
+    """All authenticated roles can view; only ADMIN/MANAGER can CRUD.
+    Table status updates are handled by Orders and Billing APIs."""
     queryset = DiningTable.objects.all().select_related('section')
     serializer_class = DiningTableSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrManager]
+    permission_classes = [IsAdminOrManager]
 
     @action(detail=True, methods=['post'])
     def close_table(self, request, pk=None):

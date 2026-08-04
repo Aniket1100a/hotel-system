@@ -12,6 +12,7 @@ export interface PrintItem {
 
 export interface PrintData {
   id: number;
+  bill_no?: string;
   table_number: string;
   billed_by_name: string;
   subtotal: string | number;
@@ -45,31 +46,36 @@ export const printDirectly = (data: PrintData) => {
   const html = `
     <html>
       <head>
-        <title>Print Bill #${data.id}</title>
+        <title>Print Bill ${data.bill_no || `#${data.id}`}</title>
         <style>
-          @page { margin: 0; }
+          @page { size: 80mm auto; margin: 0; }
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+          }
           body {
             font-family: 'Courier New', Courier, monospace;
-            width: 80mm;
-            margin: 0;
-            padding: 2mm 1mm;
+            padding: 2mm 3mm;
             font-size: 14px;
             line-height: 1.2;
             color: #000;
+            box-sizing: border-box;
+            overflow-x: hidden;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
           .divider { border-top: 1px dashed #000; margin: 4px 0; }
           .divider-solid { border-top: 1px solid #000; margin: 4px 0; }
           table { width: 100%; border-collapse: collapse; margin: 2px 0; table-layout: fixed; }
-          td, th { overflow: hidden; white-space: nowrap; }
+          td, th { overflow: hidden; }
           .text-right { text-align: right; }
           .footer { margin-top: 15px; font-size: 14px; }
           .big { font-size: 18px; }
           .header-address { font-size: 13px; font-weight: bold; line-height: 1.2; }
-          .meta-table td { padding: 1px 0; vertical-align: top; font-size: 14px; }
+          .meta-table td { padding: 1px 0; vertical-align: top; font-size: 14px; white-space: nowrap; overflow: visible; }
           .items-table th { padding: 4px 0; border-bottom: 1px dashed #000; font-weight: bold; }
-          .items-table td { padding: 4px 0; vertical-align: top; }
+          .items-table td { padding: 4px 0; vertical-align: top; white-space: normal; word-break: break-word; }
         </style>
       </head>
       <body>
@@ -84,14 +90,17 @@ export const printDirectly = (data: PrintData) => {
 
         <table class="meta-table">
           <tr>
-            <td style="width: 50%;">Date: ${formattedDate}</td>
-            <td style="width: 50%; font-weight: bold; text-align: right;">
+            <td style="width: 40%;">Date: ${formattedDate}</td>
+            <td style="width: 60%; font-weight: bold; text-align: right;">
               ${data.order_type === 'TAKEAWAY' ? 'TAKEAWAY' : `Dine In: ${data.table_number}`}
             </td>
           </tr>
           <tr>
-            <td>${formattedTime}</td>
-            <td style="text-align: right;">Bill No.: ${data.id}</td>
+            <td style="vertical-align: top;">${formattedTime}</td>
+            <td style="text-align: right; white-space: normal; word-break: break-all;">
+              <span style="font-size: 14px;">Bill No:</span>
+              <span style="font-size: 15px; font-weight: bold;">${data.bill_no || data.id}</span>
+            </td>
           </tr>
           <tr>
             <td>Cashier: ${data.billed_by_name}</td>
@@ -132,20 +141,20 @@ export const printDirectly = (data: PrintData) => {
 
         <div class="divider"></div>
 
-        <table style="margin-bottom: 4px;">
+        <table style="margin-bottom: 4px; table-layout: auto;">
           <tr>
-            <td style="width: 40%; font-weight: bold;">Total Qty: ${totalQty}</td>
-            <td style="width: 30%; text-align: right; font-weight: bold;">Sub Total</td>
-            <td style="width: 30%; text-align: right; font-weight: bold;">${parseFloat(data.subtotal.toString()).toFixed(2)}</td>
+            <td style="font-weight: bold; font-size: 15px; white-space: nowrap;">Total Qty: ${totalQty}</td>
+            <td style="text-align: right; font-weight: bold;">Sub Total</td>
+            <td style="text-align: right; font-weight: bold; width: 80px;">${parseFloat(data.subtotal.toString()).toFixed(2)}</td>
           </tr>
         </table>
 
         <div class="divider-solid" style="border-top-width: 2px;"></div>
 
-        <table>
-          <tr style="font-weight: bold; font-size: 16px;">
-            <td style="width: 60%; text-align: right;">Grand Total</td>
-            <td style="width: 40%; text-align: right;">₹ ${parseFloat(data.total_amount.toString()).toFixed(2)}</td>
+        <table style="table-layout: auto;">
+          <tr style="font-weight: bold;">
+            <td style="text-align: right; font-size: 18px; vertical-align: middle; padding-right: 10px;">Grand Total</td>
+            <td style="text-align: right; font-size: 24px; white-space: nowrap;">₹${parseFloat(data.total_amount.toString()).toFixed(2)}</td>
           </tr>
         </table>
 

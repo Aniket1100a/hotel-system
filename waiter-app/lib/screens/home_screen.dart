@@ -49,6 +49,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadData() async {
+    if (!['ADMIN', 'MANAGER', 'WAITER'].contains(widget.user.role.toUpperCase())) {
+      setState(() {
+        _loading = false;
+        _error = 'Access Restricted: This application is for waiters and management only.';
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;

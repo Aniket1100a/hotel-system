@@ -1,21 +1,11 @@
-# Task: Hierarchical Revenue Analytics & Excel Export
+# Task: Implement Profile Settings
 
-## Backend Development
-- [ ] **Dependency Setup**
-    - [ ] Install `openpyxl`
-- [ ] **API Implementation**
-    - [ ] Update `revenue_stats` in `billing/views.py` for full-year daily data
-    - [ ] Implement `export_revenue_excel` action in `InvoiceViewSet`
-
-## Web Admin Frontend
-- [ ] **UI Reconstruction (`Reports.tsx`)**
-    - [ ] Update `RevenueData` interface
-    - [ ] Implement hierarchical "Annual History" view (Month > Day)
-    - [ ] Add "Download Report (.xlsx)" button and logic
-- [ ] **Polishing**
-    - [ ] Style the expandable month rows
-    - [ ] Ensure consistent total calculations
-
-## Verification
-- [ ] Verify hierarchical drill-down
-- [ ] Verify Excel download and data accuracy
+- [x] **Backend Implementation**
+    - [x] Update `MeView` in `apps/accounts/views.py` to support `PATCH`.
+- [x] **Frontend: UI & Routes**
+    - [x] Create `src/pages/Profile.tsx`.
+    - [x] Add `/profile` route to `src/App.tsx`.
+    - [x] Link "Profile Settings" in `src/components/ProtectedRoute.tsx` to `/profile`.
+- [x] **Verification**
+    - [x] Test profile information updates.
+    - [x] Test password change functionality.

@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from apps.accounts.permissions import IsBiller, IsAdminOrManager
 from .models import Invoice
 from .serializers import InvoiceSerializer
 from apps.tables.models import DiningTable
@@ -12,7 +12,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     served orders. Tax/total are computed server-side on creation."""
     queryset = Invoice.objects.all().select_related('order', 'order__table', 'order__waiter', 'billed_by')
     serializer_class = InvoiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsBiller]
 
     def get_queryset(self):
         qs = super().get_queryset()

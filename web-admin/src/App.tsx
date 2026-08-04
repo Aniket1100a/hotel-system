@@ -14,6 +14,9 @@ import StaffManagement from './pages/StaffManagement';
 import Inventory from './pages/Inventory';
 import TableManagement from './pages/TableManagement';
 import Reports from './pages/Reports';
+import Profile from './pages/Profile';
+
+import RoleGuard from './components/RoleGuard';
 
 export default function App() {
   return (
@@ -25,10 +28,15 @@ export default function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/menu" element={<MenuManagement />} />
             <Route path="/billing" element={<Billing />} />
-            <Route path="/staff" element={<StaffManagement />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/tables" element={<TableManagement />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/profile" element={<Profile />} />
+
+            {/* Admin & Manager Only */}
+            <Route element={<RoleGuard allowedRoles={['ADMIN', 'MANAGER']} />}>
+              <Route path="/staff" element={<StaffManagement />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/tables" element={<TableManagement />} />
+              <Route path="/reports" element={<Reports />} />
+            </Route>
           </Route>
         </Routes>
       </AuthProvider>

@@ -1,11 +1,12 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
+from apps.accounts.permissions import IsAdminOrManager
 from .models import Attendance, StaffPayment
 from .serializers import AttendanceSerializer, StaffPaymentSerializer
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrManager]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -20,7 +21,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 class StaffPaymentViewSet(viewsets.ModelViewSet):
     queryset = StaffPayment.objects.all()
     serializer_class = StaffPaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAdminOrManager]
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from apps.accounts.permissions import IsWaiter, IsKitchen, IsBiller
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, OrderItemSerializer
 
@@ -14,7 +14,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     queryset = Order.objects.all().prefetch_related('items', 'items__menu_item')
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsWaiter | IsBiller | IsKitchen]
 
     def get_queryset(self):
         qs = super().get_queryset().order_by('-created_at')
@@ -39,7 +39,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsWaiter | IsKitchen]
 
     @action(detail=True, methods=['post'])
     def mark_ready(self, request, pk=None):

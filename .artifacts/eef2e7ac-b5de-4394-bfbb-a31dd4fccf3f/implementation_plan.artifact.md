@@ -1,44 +1,35 @@
-# Implementation Plan - Hierarchical Revenue Analytics & Excel Export
+# Implementation Plan - Profile Settings
 
-Implement a nested, hierarchical view for revenue reports (**Year > Month > Day > Individual Bills**) and add an option to download the data as an **Excel (.xlsx)** file.
-
-## User Review Required
-
-> [!IMPORTANT]
-> **New Dependency**: I will add `openpyxl` to the backend to support generating true Excel files.
->
-> **Export Scope**: The Excel file will include two sheets:
-> 1. **Summary**: Total revenue grouped by Month and Date.
-> 2. **All Bills**: A detailed list of every transaction (Bill No, Table, Waiter, Amount, Date) for the selected period.
+This plan outlines the steps to implement the "Profile Settings" page, allowing users to update their personal information (phone number) and change their password.
 
 ## Proposed Changes
 
-### 1. Backend Development (`billing` app)
+### Backend (Django)
 
-#### [MODIFY] [views.py](file:///F:/hotel management/hotel-system/backend/apps/billing/views.py)
-- **Hierarchy Data**: Update `revenue_stats` to return daily totals for the **entire current year**.
-- **Excel Export**: Add a new action `export_revenue_excel`:
-    - Generate an `.xlsx` file using `openpyxl`.
-    - Format data into multiple sheets for readability.
-    - Return the file as a downloadable response.
+#### [MODIFY] [views.py](file:///F:/hotel%20management/hotel-system/backend/apps/accounts/views.py)
+- Update `MeView` to support `PATCH` requests for updating the current user's profile.
+- Implement logic to handle password changes securely using `set_password()`.
 
-### 2. Web Admin Frontend
+---
 
-#### [MODIFY] [Reports.tsx](file:///F:/hotel management/hotel-system/web-admin/src/pages/Reports.tsx)
-- **Annual History Tab**:
-    - Build an expandable **Month > Day** list using an Accordion UI.
-    - Integrate the existing "Individual Bills" modal into the daily level of the hierarchy.
-- **Excel Download Button**:
-    - Add a **"Download Report (.xlsx)"** button at the top of the Reports page.
-    - Link it to the new backend export endpoint.
+### Frontend (React Admin)
+
+#### [NEW] [Profile.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/pages/Profile.tsx)
+- Create a new page with sections for:
+    - **General Information:** Update Username (read-only?), First Name, Last Name, and Phone Number.
+    - **Security:** Update Password (requires Current Password, New Password, and Confirmation).
+- Use consistent styling (slate/primary palette).
+
+#### [MODIFY] [App.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/App.tsx)
+- Register the `/profile` route.
+
+#### [MODIFY] [ProtectedRoute.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/components/ProtectedRoute.tsx)
+- Change the "Profile Settings" button in the gear dropdown to a `Link` pointing to `/profile`.
 
 ## Verification Plan
 
-### Automated Tests
-- Verify the API correctly generates and serves a valid `.xlsx` file.
-
 ### Manual Verification
-1. Open **Revenue Reports**.
-2. Expand a month and verify the daily list appears.
-3. Click the arrow on a day and verify the bill list modal opens.
-4. Click **"Download Report"** and verify that the Excel file downloads and contains accurate transaction data.
+1.  **Navigate to Profile:** Click "Profile Settings" in the header dropdown.
+2.  **Update Info:** Change the phone number and save. Verify the change persists after refresh.
+3.  **Change Password:** Update the password and verify the user can log in with the new password after logging out.
+4.  **Error Handling:** Verify that providing an incorrect current password or mismatched new passwords shows appropriate error messages.

@@ -14,15 +14,40 @@ class LoginView(TokenObtainPairView):
 
 
 class MeView(APIView):
-    """GET the currently logged-in user's profile (used by both apps to
-    confirm the token is valid and to know which role's UI to show)."""
+    """GET/PATCH the currently logged-in user's profile."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
+    def patch(self, request):
+        user = request.user
+        data = request.data.copy()
+
+        # Handle password change separately for security
+        new_password = data.pop('password', None)
+        current_password = data.pop('current_password', None)
+
+        if new_password:
+            if not current_password or not user.check_password(current_password):
+                return Response({'detail': 'Incorrect current password.'}, status=400)
+            user.set_password(new_password)
+            user.save()
+            if not data:
+                return Response({'detail': 'Password updated successfully.'})
+
+        # Prevent users from changing their own role or username
+        data.pop('role', None)
+        data.pop('username', None)
+
+        serializer = UserSerializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrManager]
+    permission_classes = [IsAdminOrManager]

@@ -47,7 +47,7 @@ export default function Inventory() {
 
   const [updateForm, setUpdateForm] = useState({
     quantity: '',
-    change_type: 'USAGE',
+    change_type: 'PURCHASE',
     notes: '',
   });
   const [billAttachment, setBillAttachment] = useState<File | null>(null);
@@ -428,77 +428,80 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Update Stock Modal */}
       {isUpdateModalOpen && selectedItem && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 text-[16px]">Stock Adjustment: {selectedItem.name}</h3>
-              <button onClick={() => setIsUpdateModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full overflow-hidden border border-slate-100">
+            <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
+              <h3 className="font-bold text-[#1e293b] text-[18px]">Stock Adjustment: {selectedItem.name.toLowerCase()}</h3>
+              <button onClick={() => setIsUpdateModalOpen(false)} className="p-2 text-slate-300 hover:text-slate-600 transition-colors"><X className="w-5 h-5" /></button>
             </div>
 
-            <form onSubmit={handleUpdateStock} className="p-8 space-y-6">
-              <div className="bg-primary-50/50 p-5 rounded-2xl border border-primary-100">
-                <p className="text-[10px] font-bold text-primary-400 uppercase tracking-widest mb-1">Available On-Hand</p>
-                <p className="text-2xl font-bold text-primary-700 tracking-tight">
-                  {parseFloat(selectedItem.current_stock).toLocaleString()} <span className="text-sm font-bold uppercase">{selectedItem.unit}</span>
+            <form onSubmit={handleUpdateStock} className="p-8 space-y-6 bg-white">
+              <div className="bg-[#f0f9ff] p-6 rounded-3xl border border-[#e0f2fe] transition-all hover:shadow-inner">
+                <p className="text-[10px] font-black text-[#0ea5e9] uppercase tracking-[0.15em] mb-2">Available On-Hand</p>
+                <p className="text-3xl font-black text-[#0369a1] tracking-tight">
+                  {parseFloat(selectedItem.current_stock).toLocaleString()} <span className="text-[16px] font-bold uppercase opacity-80">{selectedItem.unit}</span>
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Quantity</label>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.12em] ml-1">Quantity</label>
                   <input
                     required
                     type="number"
                     step="0.01"
-                    placeholder="0.00"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    placeholder="0"
+                    className="w-full px-5 py-4 bg-[#f8fafc] border border-slate-200 rounded-2xl text-[15px] font-bold text-slate-700 focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none transition-all shadow-sm"
                     value={updateForm.quantity}
                     onChange={e => setUpdateForm({...updateForm, quantity: e.target.value})}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Adjustment Type</label>
-                  <select
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none appearance-none"
-                    value={updateForm.change_type}
-                    onChange={e => setUpdateForm({...updateForm, change_type: e.target.value})}
-                  >
-                    <option value="USAGE">Consumption (-)</option>
-                    <option value="PURCHASE">Procurement (+)</option>
-                    <option value="WASTE">Wastage (-)</option>
-                    <option value="ADJUSTMENT">Reconciliation (+/-)</option>
-                  </select>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.12em] ml-1">Adjustment Type</label>
+                  <div className="relative group">
+                    <select
+                      className="w-full px-5 py-4 bg-[#f8fafc] border border-slate-200 rounded-2xl text-[14px] font-bold text-slate-700 focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none appearance-none transition-all cursor-pointer shadow-sm"
+                      value={updateForm.change_type}
+                      onChange={e => setUpdateForm({...updateForm, change_type: e.target.value})}
+                    >
+                      <option value="PURCHASE">Procurement (+)</option>
+                      <option value="USAGE">Consumption (-)</option>
+                      <option value="WASTE">Wastage (-)</option>
+                      <option value="ADJUSTMENT">Reconciliation (+/-)</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronRight className="w-4 h-4 rotate-90" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Transaction Notes</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.12em] ml-1">Transaction Notes</label>
                 <textarea
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all min-h-[80px]"
+                  className="w-full px-5 py-4 bg-[#f8fafc] border border-slate-200 rounded-2xl text-[14px] font-semibold text-slate-600 focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none transition-all min-h-[100px] shadow-sm"
                   placeholder="Reason for adjustment..."
                   value={updateForm.notes}
                   onChange={e => setUpdateForm({...updateForm, notes: e.target.value})}
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Document / Receipt Evidence</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[#94a3b8] uppercase tracking-[0.12em] ml-1">Document / Receipt Evidence</label>
                 <div className="relative group/file">
                     <div className={cn(
-                        "w-full px-4 py-4 bg-slate-50 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all",
-                        billAttachment ? "border-primary-500 bg-primary-50/30" : "border-slate-200 group-hover/file:border-primary-300"
+                        "w-full px-6 py-6 bg-[#f8fafc] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 transition-all",
+                        billAttachment ? "border-sky-500 bg-sky-50/50" : "border-slate-200 group-hover/file:border-sky-300"
                     )}>
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100">
-                          <Paperclip className={cn("w-5 h-5", billAttachment ? "text-primary-600" : "text-slate-400")} />
+                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 mb-1">
+                          <Paperclip className={cn("w-6 h-6", billAttachment ? "text-sky-600" : "text-slate-400")} />
                         </div>
                         <span className="text-[12px] font-bold text-slate-600 truncate max-w-[250px]">
-                            {billAttachment ? billAttachment.name : "Upload invoice image..."}
+                            {billAttachment ? billAttachment.name : "Click or drag file to upload..."}
                         </span>
                         <input
                             type="file"
-                            accept="image/*"
                             className="absolute inset-0 opacity-0 cursor-pointer"
                             onChange={(e) => setBillAttachment(e.target.files?.[0] || null)}
                         />
@@ -506,7 +509,10 @@ export default function Inventory() {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 transition-all active:scale-[0.98]">
+              <button
+                type="submit"
+                className="w-full bg-[#0369a1] hover:bg-[#075985] text-white font-black py-4.5 rounded-2xl shadow-xl shadow-sky-900/10 transition-all active:scale-[0.98] text-[15px] tracking-wide"
+              >
                 Commit Adjustment
               </button>
             </form>

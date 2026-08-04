@@ -1,13 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users, Package, Square, BarChart2, Bell, Settings, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users, Package, Square, BarChart2, Bell, Settings, ChevronRight, User as UserIcon, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/api/axios';
 
 export default function ProtectedRoute() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
-  const [isMobileOpen, setIsMobileOpen] = React.useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Dropdown states
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user && (user.role === 'ADMIN' || user.role === 'MANAGER')) {
+      const fetchAlerts = async () => {
+        try {
+          const res = await api.get('/inventory/items/');
+          const low = res.data.filter((i: any) => i.is_low_stock);
+          setLowStockItems(low);
+        } catch (e) {
+          console.error("Failed to fetch alerts", e);
+        }
+      };
+      fetchAlerts();
+    }
+  }, [user]);
+
+  // Close dropdowns on location change or click away
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setNotifOpen(false);
+      setSettingsOpen(false);
+    };
+
+    if (notifOpen || settingsOpen) {
+      window.addEventListener('click', handleGlobalClick);
+    }
+
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, [notifOpen, settingsOpen]);
+
+  useEffect(() => {
+    setNotifOpen(false);
+    setSettingsOpen(false);
+  }, [location]);
 
   if (loading) {
     return (
@@ -131,14 +171,96 @@ export default function ProtectedRoute() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-             <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
-             </button>
-             <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full">
-                <Settings className="w-5 h-5" />
-             </button>
+          <div className="flex items-center gap-3 relative">
+             {/* Notifications */}
+             <div className="relative">
+               <button
+                onClick={(e) => { e.stopPropagation(); setNotifOpen(!notifOpen); setSettingsOpen(false); }}
+                className={cn(
+                  "p-2 rounded-full transition-all relative",
+                  notifOpen ? "bg-primary-50 text-primary-600" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                )}
+               >
+                  <Bell className="w-5 h-5" />
+                  {lowStockItems.length > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
+                  )}
+               </button>
+
+               {notifOpen && (
+                 <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                       <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Alerts & Notifications</span>
+                       <span className="text-[10px] font-bold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded-md">{lowStockItems.length} New</span>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                       {lowStockItems.length > 0 ? (
+                         lowStockItems.map((item: any) => (
+                           <Link
+                            key={item.id}
+                            to="/inventory"
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
+                           >
+                              <div className="mt-0.5 w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                 <AlertTriangle className="w-4 h-4 text-rose-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                 <p className="text-[13px] font-bold text-slate-900 leading-tight">Low Stock: {item.name}</p>
+                                 <p className="text-[11px] text-slate-500 mt-0.5">Currently {item.current_stock} {item.unit} remaining. Refill suggested.</p>
+                              </div>
+                           </Link>
+                         ))
+                       ) : (
+                         <div className="px-6 py-12 text-center">
+                            <Bell className="w-8 h-8 text-slate-100 mx-auto mb-3" />
+                            <p className="text-[13px] font-bold text-slate-800">All caught up!</p>
+                            <p className="text-[11px] text-slate-400 mt-1">No critical alerts at the moment.</p>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+               )}
+             </div>
+
+             {/* Settings */}
+             <div className="relative">
+               <button
+                onClick={(e) => { e.stopPropagation(); setSettingsOpen(!settingsOpen); setNotifOpen(false); }}
+                className={cn(
+                  "p-2 rounded-full transition-all",
+                  settingsOpen ? "bg-primary-50 text-primary-600" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                )}
+               >
+                  <Settings className="w-5 h-5" />
+               </button>
+
+               {settingsOpen && (
+                 <div className="absolute right-0 mt-3 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl z-[100] overflow-hidden">
+                    <div className="p-2">
+                       <div className="px-3 py-2.5 mb-1">
+                          <p className="text-[12px] font-bold text-slate-900">{user.username}</p>
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{user.role}</p>
+                       </div>
+                       <div className="h-px bg-slate-100 mx-2 mb-1"></div>
+                       <Link
+                        to="/profile"
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all text-[13px] font-semibold group"
+                       >
+                          <UserIcon className="w-4 h-4 text-slate-400 group-hover:text-primary-600" />
+                          Profile Settings
+                       </Link>
+                       <button
+                        onClick={() => logout()}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-[13px] font-semibold group"
+                       >
+                          <LogOut className="w-4 h-4 text-rose-400 group-hover:text-rose-600" />
+                          Sign Out
+                       </button>
+                    </div>
+                 </div>
+               )}
+             </div>
+
              <div className="h-6 w-px bg-slate-200 mx-2"></div>
              <div className="flex flex-col items-end">
                 <span className="text-[12px] font-bold text-slate-700">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>

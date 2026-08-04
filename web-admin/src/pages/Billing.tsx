@@ -55,6 +55,7 @@ export default function Billing() {
   };
 
   const filteredInvoices = invoices.filter(inv =>
+    (inv.bill_no && inv.bill_no.toLowerCase().includes(searchQuery.toLowerCase())) ||
     inv.id.toString().includes(searchQuery) ||
     (inv.table_number && inv.table_number.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -121,7 +122,7 @@ export default function Billing() {
                     <tr key={inv.id} className="hover:bg-slate-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="text-[14px] font-bold text-slate-800">INV-#{inv.id.toString().padStart(6, '0')}</p>
+                          <p className="text-[14px] font-bold text-slate-800">{inv.bill_no || `INV-#${inv.id.toString().padStart(6, '0')}`}</p>
                           <p className="text-[11px] text-slate-400 font-medium">
                             {new Date(inv.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
