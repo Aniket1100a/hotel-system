@@ -1,35 +1,41 @@
-# Implementation Plan - Profile Settings
+# Implementation Plan - Refined Waiter Access
 
-This plan outlines the steps to implement the "Profile Settings" page, allowing users to update their personal information (phone number) and change their password.
+This plan implements strict restrictions for the `WAITER` role while ensuring they can still see active "Live Orders" on the dashboard for operational purposes. Sensitive financial data (Revenue, Audit Logs, Settlement Records) will be hidden.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Visibility vs. Control:**
+> - **Waiters CAN see:** Active orders on the Dashboard (Tables and Takeaway) including items and individual order totals.
+> - **Waiters CANNOT see:** The "Net Revenue" summary, the "Financial Records" (Billing) history page, or the buttons to finalize/complete bills.
 
 ## Proposed Changes
 
-### Backend (Django)
+### Frontend (React Web-Admin)
 
-#### [MODIFY] [views.py](file:///F:/hotel%20management/hotel-system/backend/apps/accounts/views.py)
-- Update `MeView` to support `PATCH` requests for updating the current user's profile.
-- Implement logic to handle password changes securely using `set_password()`.
+#### [MODIFY] [ProtectedRoute.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/components/ProtectedRoute.tsx)
+-   Move the `Live Orders` (which points to `/billing`) navigation item inside the management/biller role check. This page contains financial history which is sensitive.
+
+#### [MODIFY] [Overview.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/pages/Overview.tsx)
+-   **Dashboard Stats:** Hide the "Net Revenue" stat card for `WAITER`.
+-   **Order Actions:**
+    -   Hide the "Complete & Generate Bill" button for `WAITER`.
+    -   Hide the "Payment Method" dropdown for `WAITER`.
+    -   *Result:* Waiters can see what's ordered and the total, but cannot settle the bill.
 
 ---
 
-### Frontend (React Admin)
+### Backend (Django)
 
-#### [NEW] [Profile.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/pages/Profile.tsx)
-- Create a new page with sections for:
-    - **General Information:** Update Username (read-only?), First Name, Last Name, and Phone Number.
-    - **Security:** Update Password (requires Current Password, New Password, and Confirmation).
-- Use consistent styling (slate/primary palette).
-
-#### [MODIFY] [App.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/App.tsx)
-- Register the `/profile` route.
-
-#### [MODIFY] [ProtectedRoute.tsx](file:///F:/hotel%20management/hotel-system/web-admin/src/components/ProtectedRoute.tsx)
-- Change the "Profile Settings" button in the gear dropdown to a `Link` pointing to `/profile`.
+-   Permissions are already in place to prevent Waiters from accessing revenue statistics and sensitive staff/inventory data.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  **Navigate to Profile:** Click "Profile Settings" in the header dropdown.
-2.  **Update Info:** Change the phone number and save. Verify the change persists after refresh.
-3.  **Change Password:** Update the password and verify the user can log in with the new password after logging out.
-4.  **Error Handling:** Verify that providing an incorrect current password or mismatched new passwords shows appropriate error messages.
+1.  **Login as Waiter:**
+    -   Confirm you can see the list of active orders on the Dashboard.
+    -   Confirm the "Net Revenue" card is gone.
+    -   Confirm the "Live Orders" link in the sidebar is gone.
+    -   Confirm you cannot see the "Complete & Generate Bill" button on active orders.
+2.  **Login as Admin/Biller:**
+    -   Confirm all features (Revenue, Billing page, Settlement buttons) are still visible and functional.
