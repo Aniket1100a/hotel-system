@@ -3,8 +3,10 @@ import { api } from '@/api/axios';
 import { Receipt, Search, Loader2, Printer, Filter, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { printDirectly } from '@/lib/printUtils';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Billing() {
+  const { canAccess } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
@@ -64,7 +66,7 @@ export default function Billing() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financial Records</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Billing History</h1>
           <p className="text-slate-500 text-sm font-medium mt-0.5">
             Audit logs and settlement records for all generated invoices.
           </p>
@@ -121,7 +123,7 @@ export default function Billing() {
                     <tr key={inv.id} className="hover:bg-slate-50/30 transition-colors group">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="text-[14px] font-bold text-slate-800">INV-#{inv.id.toString().padStart(6, '0')}</p>
+                          <p className="text-[14px] font-bold text-slate-800">#{inv.bill_no || inv.id}</p>
                           <p className="text-[11px] text-slate-400 font-medium">
                             {new Date(inv.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -165,13 +167,17 @@ export default function Billing() {
                         </button>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handlePrintInvoice(inv)}
-                          className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
-                          title="Print Receipt"
-                        >
-                          <Printer className="w-4.5 h-4.5" />
-                        </button>
+                        {canAccess('print_bill') ? (
+                          <button
+                            onClick={() => handlePrintInvoice(inv)}
+                            className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                            title="Print Receipt"
+                          >
+                            <Printer className="w-4.5 h-4.5" />
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-200">LOCKED</span>
+                        )}
                       </td>
                     </tr>
                   ))

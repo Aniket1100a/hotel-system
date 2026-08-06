@@ -17,15 +17,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
-    table_number = serializers.CharField(source='table.number', read_only=True)
+    table_number = serializers.SerializerMethodField()
     waiter_name = serializers.CharField(source='waiter.username', read_only=True)
     total_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'table', 'table_number', 'waiter', 'waiter_name', 'order_type', 'status',
+        fields = ['id', 'table', 'sub_table', 'table_number', 'waiter', 'waiter_name', 'order_type', 'status',
                   'notes', 'is_handed_over', 'items', 'total_amount', 'created_at', 'updated_at']
         read_only_fields = ['waiter']
+
+    def get_table_number(self, obj):
+        if not obj.table:
+            return None
+        return f"{obj.table.number}{obj.sub_table}"
 
     def _deduct_inventory(self, menu_item, quantity, user, order):
         linked_item = menu_item.linked_inventory_item
@@ -70,12 +75,14 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         table = validated_data.get('table')
+        sub_table = validated_data.get('sub_table', '')
         request = self.context['request']
 
-        # Check if table already has an active order
+        # Check if exact table+sub_table already has an active order
         if table:
             existing_order = Order.objects.filter(
                 table=table,
+                sub_table=sub_table,
                 status__in=['PENDING', 'PREPARING', 'SERVED']
             ).first()
 

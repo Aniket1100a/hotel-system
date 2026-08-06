@@ -96,6 +96,7 @@ class ApiService {
   Future<void> placeOrder({
     required int tableId,
     required List<Map<String, dynamic>> items,
+    String subTable = '',
     String notes = '',
   }) async {
     final response = await http.post(
@@ -103,6 +104,7 @@ class ApiService {
       headers: await _authHeaders(),
       body: jsonEncode({
         'table': tableId,
+        'sub_table': subTable,
         'items': items,
         'notes': notes,
         'order_type': 'DINE_IN',

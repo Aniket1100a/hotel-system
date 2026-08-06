@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   DiningTable? _selectedTable;
   List<Order> _activeOrders = [];
   int? _activeOrderId;
+  String _subTable = '';
 
   // For large menus: Filtered items
   String _searchQuery = '';
@@ -87,7 +88,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _activeOrders = orders;
         _cart.clear();
         if (_activeOrders.isNotEmpty) {
-          final order = _activeOrders.first;
+          // Find the specific split order if selected, otherwise standard table order
+          final targetLabel = "${_selectedTable!.number}$_subTable";
+          final order = _activeOrders.firstWhere(
+            (o) => o.tableNumber == targetLabel,
+            orElse: () => _activeOrders.first
+          );
+
           _activeOrderId = order.id;
           for (var item in order.items) {
             _cart[item.menuItemId] = item.quantity;
@@ -111,9 +118,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _selectedTable = table;
       _activeOrders = [];
       _activeOrderId = null;
+      _subTable = '';
       _cart.clear();
     });
     _fetchActiveOrders(table.id);
+  }
+
+  void _selectSplitOrder(String sub) {
+    setState(() {
+      _subTable = sub;
+      _activeOrderId = null;
+      _cart.clear();
+    });
+    _fetchActiveOrders(_selectedTable!.id);
   }
 
   void _changeQuantity(int menuItemId, int delta) {
@@ -163,7 +180,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         await _apiService.updateOrder(orderId: _activeOrderId!, items: items);
       } else {
         if (items.isEmpty) return;
-        await _apiService.placeOrder(tableId: _selectedTable!.id, items: items);
+        await _apiService.placeOrder(
+          tableId: _selectedTable!.id,
+          items: items,
+          subTable: _subTable,
+        );
       }
       
       if (!mounted) return;
@@ -413,7 +434,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text('TABLE MANAGEMENT', style: Theme.of(context).textTheme.labelSmall),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('TABLE MANAGEMENT', style: Theme.of(context).textTheme.labelSmall),
+                if (_selectedTable != null)
+                  Row(
+                    children: ['A', 'B', 'C'].map((sub) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: InkWell(
+                        onTap: () => _selectSplitOrder(_subTable == sub ? '' : sub),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _subTable == sub ? AppColors.primary : AppColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: _subTable == sub ? AppColors.primary : AppColors.border),
+                          ),
+                          child: Text(
+                            'SPLIT $sub',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: _subTable == sub ? Colors.white : AppColors.textSecondary
+                            ),
+                          ),
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           SingleChildScrollView(
@@ -509,10 +560,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     List<MenuItem> displayItems = [];
 
     if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase().trim();
       for (var cat in _menu) {
-        displayItems.addAll(cat.items.where((i) =>
-          i.name.toLowerCase().contains(_searchQuery.toLowerCase()) && i.isAvailable
-        ));
+        displayItems.addAll(cat.items.where((i) {
+          if (!i.isAvailable) return false;
+          final name = i.name.toLowerCase();
+
+          // 1. Regular search (contains)
+          if (name.contains(q)) return true;
+
+          // 2. Initial-based Shortcut search (e.g. "pm" matches "Paneer Masala")
+          if (q.length >= 2 && !q.contains(' ')) {
+            final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+            if (words.length >= q.length) {
+              // Try to find a sequence of words where the first letter matches q
+              // We check if q is a subsequence of the word initials
+              int qIdx = 0;
+              for (var word in words) {
+                if (qIdx < q.length && word.startsWith(q[qIdx])) {
+                  qIdx++;
+                }
+              }
+              if (qIdx == q.length) return true;
+            }
+          }
+
+          return false;
+        }));
       }
     } else if (_activeCategoryId != null) {
       final activeCat = _menu.firstWhere((c) => c.id == _activeCategoryId);

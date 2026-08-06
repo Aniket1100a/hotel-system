@@ -163,9 +163,31 @@ export default function MenuManagement() {
     }
   };
 
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = items.filter(item => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    const name = item.name.toLowerCase();
+
+    // 1. Regular search (contains)
+    if (name.includes(q)) return true;
+
+    // 2. Initial-based Shortcut search (e.g. "pm" matches "Paneer Masala")
+    if (q.length >= 2 && !q.includes(' ')) {
+      const words = name.split(/\s+/).filter(w => w.length > 0);
+      if (words.length >= q.length) {
+        let qIdx = 0;
+        for (const word of words) {
+          if (qIdx < q.length && word.startsWith(q[qIdx])) {
+            qIdx++;
+          }
+        }
+        if (qIdx === q.length) return true;
+      }
+    }
+
+    return false;
+  });
 
   return (
     <div className="space-y-8">

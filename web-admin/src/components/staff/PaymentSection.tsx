@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { Banknote, Plus, History, Loader2, Trash2, Calendar, User, Image as ImageIcon, Paperclip, Search, Filter } from 'lucide-react';
+import { Banknote, Plus, History, Loader2, Trash2, Calendar, User, Image as ImageIcon, Paperclip, Search, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PaymentSection() {

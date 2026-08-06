@@ -29,6 +29,25 @@ class OrderViewSet(viewsets.ModelViewSet):
         return qs
 
     @action(detail=True, methods=['post'])
+    def cancel_order(self, request, pk=None):
+        order = self.get_object()
+        if order.status == 'BILLED':
+            return Response({'error': 'Cannot cancel a billed order.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = 'CANCELLED'
+        order.save()
+
+        if order.table:
+            table = order.table
+            # Check if any other active splits exist
+            has_active = Order.objects.filter(table=table, status__in=['PENDING', 'PREPARING', 'SERVED']).exclude(id=order.id).exists()
+            if not has_active:
+                table.status = 'FREE'
+                table.save()
+
+        return Response({'status': 'order cancelled'})
+
+    @action(detail=True, methods=['post'])
     def mark_handed_over(self, request, pk=None):
         order = self.get_object()
         order.is_handed_over = True
@@ -40,6 +59,17 @@ class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        # Reverse inventory deduction before deleting
+        order_serializer = OrderSerializer()
+        order_serializer._deduct_inventory(
+            instance.menu_item,
+            -instance.quantity,
+            self.request.user,
+            instance.order
+        )
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def mark_ready(self, request, pk=None):
