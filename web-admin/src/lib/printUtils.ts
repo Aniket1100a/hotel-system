@@ -47,11 +47,11 @@ export const printDirectly = (data: PrintData) => {
       <head>
         <title>Print Bill #${data.id}</title>
         <style>
-          @page { margin: 0; }
+          @page { margin: 5mm; }
           body {
             font-family: 'Courier New', Courier, monospace;
-            width: 80mm;
-            margin: 0;
+            width: 74mm;
+            margin: 0 auto;
             padding: 2mm 1mm;
             font-size: 14px;
             line-height: 1.2;
@@ -65,8 +65,8 @@ export const printDirectly = (data: PrintData) => {
           td, th { overflow: hidden; white-space: nowrap; }
           .text-right { text-align: right; }
           .footer { margin-top: 15px; font-size: 14px; }
-          .big { font-size: 18px; }
-          .header-address { font-size: 13px; font-weight: bold; line-height: 1.2; }
+          .big { font-size: 22px; letter-spacing: 0.5px; }
+          .header-address { font-size: 14px; font-weight: 700; line-height: 1.2; }
           .meta-table td { padding: 1px 0; vertical-align: top; font-size: 14px; }
           .items-table th { padding: 4px 0; border-bottom: 1px dashed #000; font-weight: bold; }
           .items-table td { padding: 4px 0; vertical-align: top; }
