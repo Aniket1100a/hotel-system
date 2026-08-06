@@ -7,7 +7,7 @@
 /// Provide a build-time define such as `--dart-define=API_BASE_URL=http://192.168.1.5:8000/api`
 /// to override the default value.
 class ApiConfig {
-  static const String _defaultBaseUrl = 'http://10.187.206.105:8000/api';
+  static const String _defaultBaseUrl = 'http://10.64.88.221:8000/api';
 
   static String get baseUrl {
     const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');

@@ -26,7 +26,8 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Order #{self.id} - Table {self.table.number} ({self.status})"
+        table_label = f"Table {self.table.number}" if self.table else "No table"
+        return f"Order #{self.id} - {table_label} ({self.status})"
 
     @property
     def total_amount(self):
