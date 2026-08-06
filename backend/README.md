@@ -39,7 +39,12 @@ This is the core Django REST API for the Hotel Management System. It handles aut
    python manage.py createsuperuser
    ```
 
-6. **Run Server:**
+6. **Load seed data:**
+   ```bash
+   python seed.py
+   ```
+
+7. **Run Server:**
    ```bash
    python manage.py runserver 0.0.0.0:8000
    ```
