@@ -31,27 +31,27 @@ class TableChip extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 80,
-        height: 70,
+        width: 60,
+        height: 50,
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary
               : (isOccupied ? AppColors.warningSoft : AppColors.surface),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
                 ? AppColors.primary
                 : (isOccupied ? AppColors.warning.withOpacity(0.3) : AppColors.border),
-            width: 1.5,
+            width: 1.2,
           ),
           boxShadow: selected ? [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: AppColors.primary.withOpacity(0.2),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             )
           ] : null,
         ),
@@ -61,16 +61,16 @@ class TableChip extends StatelessWidget {
             Text(
               '${table.number}',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
                 color: selected ? Colors.white : AppColors.textPrimary,
-                letterSpacing: -1,
+                letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Container(
-              width: 6,
-              height: 6,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(
                 color: selected ? Colors.white.withOpacity(0.5) : _statusColor,
                 shape: BoxShape.circle,
