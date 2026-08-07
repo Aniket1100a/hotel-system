@@ -104,8 +104,9 @@ class OrderSerializer(serializers.ModelSerializer):
         items_data = validated_data.pop('items', None)
         request = self.context['request']
         user = request.user
+        is_waiter = getattr(user, 'role', 'WAITER') == 'WAITER'
 
-        if instance.status in ['PAID', 'CANCELLED']:
+        if instance.status in ['BILLED', 'CANCELLED']:
              raise serializers.ValidationError("Cannot edit a closed or cancelled order.")
 
         for attr, value in validated_data.items():
@@ -113,53 +114,69 @@ class OrderSerializer(serializers.ModelSerializer):
         instance.save()
 
         if items_data is not None:
-            existing_items = {item.id: item for item in instance.items.all()}
-
-            for item_data in items_data:
-                item_id = item_data.get('id')
-                if item_id and item_id in existing_items:
-                    item = existing_items.pop(item_id)
-
-                    # Handle inventory if quantity changed
-                    new_qty = item_data.get('quantity', item.quantity)
-                    qty_diff = new_qty - item.quantity
-                    if qty_diff != 0:
-                        self._deduct_inventory(item.menu_item, qty_diff, user, instance)
-
-                    for attr, value in item_data.items():
-                        if attr != 'id' and attr != 'menu_item':
-                            setattr(item, attr, value)
-                    item.save()
-                else:
+            if is_waiter:
+                # Waiters can only ADD items. Items in request are considered NEW additions.
+                for item_data in items_data:
                     menu_item = item_data['menu_item']
                     quantity = item_data['quantity']
                     note = item_data.get('note', '')
 
-                    # Check if this menu_item already exists in the order (but we didn't get an ID)
+                    if quantity <= 0: continue
+
                     existing_item = instance.items.filter(menu_item=menu_item, note=note).first()
                     if existing_item:
-                        if existing_item.id in existing_items:
-                            existing_items.pop(existing_item.id)
-
-                        qty_diff = quantity - existing_item.quantity
-                        if qty_diff != 0:
-                            self._deduct_inventory(menu_item, qty_diff, user, instance)
-
-                        existing_item.quantity = quantity
+                        existing_item.quantity += quantity
                         existing_item.save(update_fields=['quantity'])
                     else:
-                        order_item = OrderItem.objects.create(
+                        OrderItem.objects.create(
                             order=instance,
                             menu_item=menu_item,
                             quantity=quantity,
                             note=note,
                             price_at_order=menu_item.price,
                         )
-                        self._deduct_inventory(order_item.menu_item, order_item.quantity, user, instance)
+                    self._deduct_inventory(menu_item, quantity, user, instance)
+            else:
+                # Admins/Managers can still edit/delete (sync state)
+                existing_items = {item.id: item for item in instance.items.all()}
+                for item_data in items_data:
+                    item_id = item_data.get('id')
+                    if item_id and item_id in existing_items:
+                        item = existing_items.pop(item_id)
+                        new_qty = item_data.get('quantity', item.quantity)
+                        qty_diff = new_qty - item.quantity
+                        if qty_diff != 0:
+                            self._deduct_inventory(item.menu_item, qty_diff, user, instance)
 
-            # Items left in existing_items were not in the request, so delete them
-            for item in existing_items.values():
-                self._deduct_inventory(item.menu_item, -item.quantity, user, instance)
-                item.delete()
+                        for attr, value in item_data.items():
+                            if attr != 'id' and attr != 'menu_item':
+                                setattr(item, attr, value)
+                        item.save()
+                    else:
+                        menu_item = item_data['menu_item']
+                        quantity = item_data['quantity']
+                        note = item_data.get('note', '')
+                        existing_item = instance.items.filter(menu_item=menu_item, note=note).first()
+                        if existing_item:
+                            if existing_item.id in existing_items:
+                                existing_items.pop(existing_item.id)
+                            qty_diff = quantity - existing_item.quantity
+                            if qty_diff != 0:
+                                self._deduct_inventory(menu_item, qty_diff, user, instance)
+                            existing_item.quantity = quantity
+                            existing_item.save(update_fields=['quantity'])
+                        else:
+                            order_item = OrderItem.objects.create(
+                                order=instance,
+                                menu_item=menu_item,
+                                quantity=quantity,
+                                note=note,
+                                price_at_order=menu_item.price,
+                            )
+                            self._deduct_inventory(order_item.menu_item, order_item.quantity, user, instance)
+
+                for item in existing_items.values():
+                    self._deduct_inventory(item.menu_item, -item.quantity, user, instance)
+                    item.delete()
 
         return instance
