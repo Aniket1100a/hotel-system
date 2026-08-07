@@ -12,8 +12,35 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = ['id', 'bill_no', 'customer_name', 'order', 'table_number', 'billed_by', 'billed_by_name', 'waiter_name', 'subtotal',
                   'tax_percent', 'tax_amount', 'discount_amount', 'total_amount',
-                  'payment_method', 'is_paid', 'created_at']
+                  'payment_method', 'is_paid', 'created_at', 'receipt_copy']
         read_only_fields = ['bill_no', 'billed_by', 'subtotal', 'tax_amount', 'total_amount']
+
+    def _generate_digital_receipt(self, invoice):
+        """Generates a text-based digital copy for local storage container."""
+        order = invoice.order
+        items = order.items.all()
+
+        lines = []
+        lines.append("="*30)
+        lines.append("   HOTEL CHATURTHI")
+        lines.append(" Solapur - Dhule highway")
+        lines.append(f" Date: {invoice.created_at.strftime('%d/%m/%Y %H:%M')}")
+        lines.append(f" Bill No: {invoice.bill_no}")
+        lines.append(f" Table: {order.table.number if order.table else 'TA'}")
+        lines.append("-" * 30)
+
+        for item in items:
+            name = item.menu_item.name[:20]
+            lines.append(f"{name:<20} {item.quantity} x {item.price_at_order}")
+
+        lines.append("-" * 30)
+        lines.append(f"SubTotal:  ₹{invoice.subtotal}")
+        lines.append(f"Discount:  -₹{invoice.discount_amount}")
+        lines.append(f"GRAND TOTAL: ₹{invoice.total_amount}")
+        lines.append("="*30)
+        lines.append(" Thanks & Visit Again!")
+
+        return "\n".join(lines)
 
     def create(self, validated_data):
         from decimal import Decimal
@@ -63,6 +90,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
             payment_method=validated_data.get('payment_method', Invoice.PaymentMethod.CASH),
             is_paid=True,  # Set to PAID immediately
         )
+
+        # Generate and save digital copy
+        invoice.receipt_copy = self._generate_digital_receipt(invoice)
+        invoice.save(update_fields=['receipt_copy'])
 
         # Update order status
         order.status = order.Status.BILLED
