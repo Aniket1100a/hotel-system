@@ -163,7 +163,7 @@ export default function PaymentSection() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[14px] font-bold text-slate-900 tracking-tight">₹{parseFloat(pay.amount).toLocaleString()}</span>
+                      <span className="text-[14px] font-bold text-slate-900 tracking-tight">₹{Math.round(parseFloat(pay.amount)).toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {pay.attachment ? (

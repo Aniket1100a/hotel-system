@@ -290,7 +290,7 @@ export default function MenuManagement() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-[14px] font-bold text-slate-900">₹{parseFloat(item.price).toLocaleString()}</span>
+                        <span className="text-[14px] font-bold text-slate-900">₹{Math.round(parseFloat(item.price)).toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
                         {item.linked_inventory_item ? (
