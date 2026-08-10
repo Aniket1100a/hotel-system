@@ -15,7 +15,14 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        from django.utils import timezone
+        qs = super().get_queryset().order_by('-created_at')
+
+        # Role-based restriction: Managers and Billers can only see today's records
+        if self.request.user.role in ['MANAGER', 'BILLER']:
+            today = timezone.now().date()
+            qs = qs.filter(created_at__date=today)
+
         date_param = self.request.query_params.get('date')
         if date_param:
             qs = qs.filter(created_at__date=date_param)
@@ -49,27 +56,43 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         first_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         first_of_year = today.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # Daily Revenue for current year (to build Month > Day hierarchy)
-        daily_stats = Invoice.objects.filter(
-            created_at__gte=first_of_year,
-            is_paid=True
-        ).annotate(date=TruncDate('created_at')).values('date').annotate(
+        # Base filter for settled invoices
+        base_filter = {'is_paid': True}
+
+        # If user is MANAGER, they can only see today's data
+        if request.user.role == 'MANAGER':
+            start_date = today.replace(hour=0, minute=0, second=0, microsecond=0)
+            base_filter['created_at__gte'] = start_date
+        else:
+            base_filter['created_at__gte'] = first_of_year
+
+        # Daily Revenue (filtered by role)
+        daily_stats = Invoice.objects.filter(**base_filter).annotate(
+            date=TruncDate('created_at')
+        ).values('date').annotate(
             total=Sum('total_amount')
         ).order_by('-date')
 
-        # Summary for current month
-        this_month_total = Invoice.objects.filter(
-            created_at__gte=first_of_month,
-            is_paid=True
-        ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+        # Summary for current month (filtered by role)
+        month_filter = {'is_paid': True, 'created_at__gte': first_of_month}
+        if request.user.role == 'MANAGER':
+            month_filter['created_at__gte'] = today.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Also send monthly summary for year-level view
-        monthly_stats = Invoice.objects.filter(
-            created_at__gte=first_of_year,
-            is_paid=True
-        ).annotate(month=TruncMonth('created_at')).values('month').annotate(
-            total=Sum('total_amount')
-        ).order_by('-month')
+        this_month_total = Invoice.objects.filter(**month_filter).aggregate(
+            Sum('total_amount')
+        )['total_amount__sum'] or 0
+
+        # Monthly summary (only for ADMIN)
+        if request.user.role == 'ADMIN':
+            monthly_stats = Invoice.objects.filter(
+                created_at__gte=first_of_year,
+                is_paid=True
+            ).annotate(month=TruncMonth('created_at')).values('month').annotate(
+                total=Sum('total_amount')
+            ).order_by('-month')
+        else:
+            # Managers don't get monthly historical breakdown
+            monthly_stats = []
 
         return Response({
             'daily': daily_stats,
