@@ -157,6 +157,7 @@ export default function PaymentSection() {
                         "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border",
                         pay.payment_type === 'SALARY' ? "bg-primary-50 text-primary-700 border-primary-100" :
                         pay.payment_type === 'ADVANCE' ? "bg-amber-50 text-amber-700 border-amber-100" :
+                        pay.payment_type === 'OVERTIME' ? "bg-indigo-50 text-indigo-700 border-indigo-100" :
                         "bg-emerald-50 text-emerald-700 border-emerald-100"
                       )}>
                         {pay.payment_type}
@@ -252,14 +253,14 @@ export default function PaymentSection() {
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Transaction Type</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['SALARY', 'ADVANCE', 'BONUS'].map(type => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {['SALARY', 'ADVANCE', 'BONUS', 'OVERTIME'].map(type => (
                       <button
                         key={type}
                         type="button"
                         onClick={() => setFormData({...formData, payment_type: type})}
                         className={cn(
-                          "py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all",
+                          "py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider border transition-all",
                           formData.payment_type === type
                             ? "bg-primary-600 border-primary-600 text-white shadow-sm"
                             : "bg-white border-slate-200 text-slate-500 hover:border-primary-300"

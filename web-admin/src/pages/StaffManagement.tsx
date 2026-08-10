@@ -12,6 +12,12 @@ interface StaffMember {
   last_name: string;
   role: string;
   phone_number: string;
+  profile?: {
+    address: string;
+    joining_date: string;
+    basic_salary: string;
+    is_active: boolean;
+  };
 }
 
 export default function StaffManagement() {
@@ -29,6 +35,9 @@ export default function StaffManagement() {
     last_name: '',
     role: 'WAITER',
     phone_number: '',
+    address: '',
+    joining_date: new Date().toISOString().split('T')[0],
+    basic_salary: '',
   });
 
   const fetchStaff = async () => {
@@ -50,13 +59,20 @@ export default function StaffManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        profile: {
+          address: formData.address,
+          joining_date: formData.joining_date,
+          basic_salary: formData.basic_salary || '0'
+        }
+      };
+
       if (editingMember) {
-        // For updates, password is optional
-        const payload = { ...formData };
         if (!payload.password) delete (payload as any).password;
         await api.patch(`/auth/users/${editingMember.id}/`, payload);
       } else {
-        await api.post('/auth/users/', formData);
+        await api.post('/auth/users/', payload);
       }
 
       setIsModalOpen(false);
@@ -68,6 +84,9 @@ export default function StaffManagement() {
         last_name: '',
         role: 'WAITER',
         phone_number: '',
+        address: '',
+        joining_date: new Date().toISOString().split('T')[0],
+        basic_salary: '',
       });
       fetchStaff();
     } catch (error) {
@@ -84,6 +103,9 @@ export default function StaffManagement() {
       last_name: member.last_name,
       role: member.role,
       phone_number: member.phone_number,
+      address: member.profile?.address || '',
+      joining_date: member.profile?.joining_date || new Date().toISOString().split('T')[0],
+      basic_salary: member.profile?.basic_salary || '',
     });
     setIsModalOpen(true);
   };
@@ -300,30 +322,37 @@ export default function StaffManagement() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Unique Username</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Username</label>
                   <input
                     required
                     disabled={!!editingMember}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all disabled:opacity-50"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all disabled:opacity-50"
                     value={formData.username}
                     onChange={e => setFormData({...formData, username: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Joining Date</label>
+                  <input
+                    required
+                    type="date"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    value={formData.joining_date}
+                    onChange={e => setFormData({...formData, joining_date: e.target.value})}
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
-                  {editingMember ? 'New Password (Leave blank to keep current)' : 'Access Password'}
-                </label>
-                <input
-                  required={!editingMember}
-                  type="password"
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Home Address</label>
+                <textarea
+                  placeholder="Street, City, Pin Code"
+                  rows={2}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
-                  value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
+                  value={formData.address}
+                  onChange={e => setFormData({...formData, address: e.target.value})}
                 />
               </div>
 
@@ -343,11 +372,37 @@ export default function StaffManagement() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Basic Salary (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    value={formData.basic_salary}
+                    onChange={e => setFormData({...formData, basic_salary: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Phone Contact</label>
                   <input
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                     value={formData.phone_number}
                     onChange={e => setFormData({...formData, phone_number: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                    {editingMember ? 'New Password' : 'Access Password'}
+                  </label>
+                  <input
+                    required={!editingMember}
+                    type="password"
+                    placeholder={editingMember ? "Leave blank to keep" : "****"}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    value={formData.password}
+                    onChange={e => setFormData({...formData, password: e.target.value})}
                   />
                 </div>
               </div>

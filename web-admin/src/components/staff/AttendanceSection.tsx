@@ -6,20 +6,28 @@ import { cn } from '@/lib/utils';
 export default function AttendanceSection() {
   const [staff, setStaff] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setActiveView] = useState<'daily' | 'summary'>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
   const [saving, setSaving] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [staffRes, attRes] = await Promise.all([
-        api.get('/auth/users/'),
-        api.get(`/staff/attendance/?date=${selectedDate}`)
-      ]);
-      setStaff(staffRes.data);
-      setAttendance(attRes.data);
+      if (viewMode === 'daily') {
+        const [staffRes, attRes] = await Promise.all([
+          api.get('/auth/users/'),
+          api.get(`/staff/attendance/?date=${selectedDate}`)
+        ]);
+        setStaff(staffRes.data);
+        setAttendance(attRes.data);
+      } else {
+        const res = await api.get(`/staff/attendance/summary/?month=${selectedMonth}`);
+        setSummary(res.data);
+      }
     } catch (err) {
       console.error("Error fetching attendance:", err);
     } finally {
@@ -29,7 +37,7 @@ export default function AttendanceSection() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedDate]);
+  }, [selectedDate, selectedMonth, viewMode]);
 
   const toggleAttendance = async (userId: number, currentStatus: string, file?: File) => {
     const nextStatus = currentStatus === 'PRESENT' ? 'ABSENT' : 'PRESENT';
@@ -103,18 +111,45 @@ export default function AttendanceSection() {
 
   return (
     <div className="space-y-6">
-      {/* Date and Search Bar */}
+      {/* Date, Toggle and Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200">
-            <Calendar className="w-4 h-4 text-primary-600" />
+          <div className="flex p-1 bg-white rounded-xl border border-slate-200">
+             <button
+              onClick={() => setActiveView('daily')}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
+                viewMode === 'daily' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+             >
+               Daily Log
+             </button>
+             <button
+              onClick={() => setActiveView('summary')}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
+                viewMode === 'summary' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+             >
+               Monthly Summary
+             </button>
           </div>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-          />
+
+          {viewMode === 'daily' ? (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
+            />
+          ) : (
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
+            />
+          )}
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -129,14 +164,14 @@ export default function AttendanceSection() {
         </div>
       </div>
 
-      {/* Attendance Table */}
+      {/* Content Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-3" />
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Loading Records...</p>
           </div>
-        ) : (
+        ) : viewMode === 'daily' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -144,6 +179,7 @@ export default function AttendanceSection() {
                   <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employee</th>
                   <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attendance Status</th>
                   <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Duty Schedule</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Overtime</th>
                   <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Verification</th>
                 </tr>
               </thead>
@@ -210,6 +246,15 @@ export default function AttendanceSection() {
                           </div>
                         </div>
                       </td>
+                      <td className="px-6 py-5 text-center">
+                         {record?.overtime_hours > 0 ? (
+                           <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-[12px] font-black border border-indigo-100">
+                             +{record.overtime_hours}h
+                           </span>
+                         ) : (
+                           <span className="text-slate-300 text-[11px] font-medium">-</span>
+                         )}
+                      </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-center gap-2">
                           <div className="relative">
@@ -248,6 +293,45 @@ export default function AttendanceSection() {
                     </tr>
                   )
                 })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employee</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Days Present</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Work Hours</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Accumulated Overtime</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {summary.map(item => (
+                  <tr key={item.user} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-6 py-5">
+                       <div>
+                          <p className="text-[14px] font-bold text-slate-800">{item.user__first_name} {item.user__last_name}</p>
+                          <p className="text-[11px] text-slate-400 font-medium italic">@{item.user__username}</p>
+                       </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                       <span className="text-[14px] font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">{item.days_present} Days</span>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                       <span className="text-[14px] font-bold text-primary-700">{item.total_hours} hrs</span>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                       <span className="text-[14px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">+{item.total_overtime}h</span>
+                    </td>
+                  </tr>
+                ))}
+                {summary.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center text-slate-400 italic">No data found for this month.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
