@@ -62,14 +62,45 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         # Reverse inventory deduction before deleting
+        order = instance.order
         order_serializer = OrderSerializer()
         order_serializer._deduct_inventory(
             instance.menu_item,
             -instance.quantity,
             self.request.user,
-            instance.order
+            order
         )
         instance.delete()
+
+        # If no items left in order, cancel it and free table if necessary
+        if not order.items.exists():
+            order.status = Order.Status.CANCELLED
+            order.save()
+            if order.table:
+                has_active = Order.objects.filter(
+                    table=order.table,
+                    status__in=[Order.Status.PENDING, Order.Status.PREPARING, Order.Status.SERVED]
+                ).exclude(id=order.id).exists()
+                if not has_active:
+                    order.table.status = 'FREE'
+                    order.table.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        old_quantity = instance.quantity
+        new_quantity = serializer.validated_data.get('quantity', old_quantity)
+
+        if old_quantity != new_quantity:
+            qty_diff = new_quantity - old_quantity
+            order_serializer = OrderSerializer()
+            order_serializer._deduct_inventory(
+                instance.menu_item,
+                qty_diff,
+                self.request.user,
+                instance.order
+            )
+
+        serializer.save()
 
     @action(detail=True, methods=['post'])
     def mark_ready(self, request, pk=None):

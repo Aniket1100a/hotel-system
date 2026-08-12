@@ -98,7 +98,7 @@ export default function Overview() {
       setStats({
         tablesActive: occupied,
         ordersToday: orders.filter((o: any) => new Date(o.created_at).toLocaleDateString('en-CA') === todayStr).length,
-        revenueToday: revenue,
+        revenueToday: Math.round(revenue),
       });
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
@@ -175,7 +175,7 @@ export default function Overview() {
   const handleCancelItem = async (itemId: number) => {
     if (!window.confirm("Remove this item from the order?")) return;
     try {
-      await api.delete(`/order-items/${itemId}/`);
+      await api.delete(`/orders/items/${itemId}/`);
       fetchDashboardData();
     } catch (err) {
       console.error("Failed to delete item", err);
@@ -282,7 +282,7 @@ export default function Overview() {
                   <span className="text-[13px] font-medium text-slate-700">{item.menu_item_name}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[12px] font-semibold text-slate-500">₹{parseFloat(item.subtotal).toLocaleString()}</span>
+                  <span className="text-[12px] font-semibold text-slate-500">₹{Math.round(parseFloat(item.subtotal)).toLocaleString()}</span>
                   <button
                     onClick={() => handleCancelItem(item.id)}
                     className="opacity-0 group-hover/item:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
@@ -298,7 +298,7 @@ export default function Overview() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
-              <p className="text-xl font-bold text-slate-900 tracking-tight">₹{parseFloat(order.total_amount).toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900 tracking-tight">₹{Math.round(parseFloat(order.total_amount)).toLocaleString()}</p>
             </div>
             <select
               disabled={isProcessing}

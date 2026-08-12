@@ -18,11 +18,14 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
   const [search, setSearch] = useState('');
   const [subTable, setSubTable] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number, is_veg: boolean, existing?: boolean}}>({});
+  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number, is_veg: boolean}}>({});
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
+  const [updatingHistoryId, setUpdatingHistoryId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'NEW' | 'EDIT'>('NEW');
 
-  // Synchronize cart when split changes
+  // Synchronize history when split changes
   useEffect(() => {
     if (!tableId || isTakeaway) return;
 
@@ -31,28 +34,23 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
     );
 
     if (splitOrder) {
-      const newCart: any = {};
-      splitOrder.items.forEach((item: any) => {
-        newCart[item.menu_item] = {
-          name: item.menu_item_name,
-          price: parseFloat(item.price_at_order),
-          quantity: item.quantity,
-          is_veg: true, // fallback
-          existing: true // mark as already placed
-        };
-      });
-      setCart(newCart);
+      setHistoryItems(splitOrder.items || []);
       setCustomerName(splitOrder.customer_name || '');
     } else {
-      setCart({});
+      setHistoryItems([]);
       setCustomerName('');
     }
+    // Don't reset cart here, let the user keep their selection if they switch splits?
+    // Actually, usually cart is per-table/split, but since this is a drawer it's safer to clear cart on split change too.
+    setCart({});
   }, [subTable, activeOrders, tableId, isTakeaway]);
 
   useEffect(() => {
     if (isOpen) {
       fetchMenu();
       setSubTable('');
+      setCart({});
+      setActiveTab('NEW');
     }
   }, [isOpen]);
 
@@ -100,7 +98,38 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
     });
   };
 
-  const totalAmount = Object.values(cart).reduce((sum, item: any) => sum + (item.price * item.quantity), 0);
+  const updateHistoryQuantity = async (item: any, delta: number) => {
+    const newQty = item.quantity + delta;
+    if (newQty <= 0) {
+      return deleteHistoryItem(item.id);
+    }
+
+    setUpdatingHistoryId(item.id);
+    try {
+      await api.patch(`/orders/items/${item.id}/`, { quantity: newQty });
+      onOrderPlaced(); // Trigger refresh in parent
+    } catch (err) {
+      console.error("Error updating history item:", err);
+    } finally {
+      setUpdatingHistoryId(null);
+    }
+  };
+
+  const deleteHistoryItem = async (itemId: number) => {
+    if (!window.confirm("Remove this item from the kitchen order?")) return;
+    setUpdatingHistoryId(itemId);
+    try {
+      await api.delete(`/orders/items/${itemId}/`);
+      onOrderPlaced(); // Trigger refresh in parent
+    } catch (err) {
+      console.error("Error deleting history item:", err);
+    } finally {
+      setUpdatingHistoryId(null);
+    }
+  };
+
+  const cartTotal = Object.values(cart).reduce((sum, item: any) => sum + (item.price * item.quantity), 0);
+  const historyTotal = historyItems.reduce((sum, item: any) => sum + parseFloat(item.subtotal), 0);
 
   const handlePlaceOrder = async () => {
     if (Object.keys(cart).length === 0) return;
@@ -259,86 +288,199 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
 
           {/* Cart Side (Right) */}
           <div className="w-[320px] flex flex-col bg-white">
-            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4 text-primary-600" />
-                <span className="text-[12px] font-bold text-slate-800 uppercase tracking-wider">Current Selection</span>
-              </div>
-              <span className="text-[11px] font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
-                {Object.keys(cart).length} Items
-              </span>
+            {/* Tabs Header */}
+            <div className="flex border-b border-slate-100 shrink-0">
+              <button
+                onClick={() => setActiveTab('NEW')}
+                className={cn(
+                  "flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
+                  activeTab === 'NEW' ? "text-primary-600 bg-primary-50/30" : "text-slate-400 hover:text-slate-600"
+                )}
+              >
+                New Order
+                {Object.keys(cart).length > 0 && (
+                  <span className="absolute top-3 right-3 w-4 h-4 bg-primary-500 text-white rounded-full flex items-center justify-center text-[8px] border-2 border-white">
+                    {Object.keys(cart).length}
+                  </span>
+                )}
+                {activeTab === 'NEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('EDIT')}
+                className={cn(
+                  "flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
+                  activeTab === 'EDIT' ? "text-emerald-600 bg-emerald-50/30" : "text-slate-400 hover:text-slate-600"
+                )}
+              >
+                Edit Order
+                {historyItems.length > 0 && (
+                  <span className="absolute top-3 right-3 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[8px] border-2 border-white">
+                    {historyItems.length}
+                  </span>
+                )}
+                {activeTab === 'EDIT' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600" />}
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cust. Name (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="Enter guest name..."
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                />
-              </div>
-
-              {Object.entries(cart).map(([id, data]: [string, any]) => (
-                <div key={id} className="space-y-3">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1">
-                        <p className="text-[13px] font-bold text-slate-800 leading-tight">{data.name}</p>
-                        <p className="text-[11px] text-slate-400 font-semibold mt-0.5">₹{data.price} unit price</p>
-                    </div>
-                    <button onClick={() => deleteFromCart(parseInt(id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              {activeTab === 'NEW' ? (
+                <>
+                  {/* Customer Name */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cust. Name (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter guest name..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                    />
                   </div>
-                  <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => removeFromCart(parseInt(id))} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-[13px] font-bold text-slate-700 w-6 text-center">{data.quantity}</span>
-                      <button onClick={() => addToCart({id, name: data.name, price: data.price, is_veg: data.is_veg})} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm">
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <p className="text-[13px] font-bold text-slate-900">₹{(data.price * data.quantity).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
 
-              {Object.keys(cart).length === 0 && (
-                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                     <ShoppingCart className="w-8 h-8 text-slate-200" />
-                   </div>
-                   <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Cart is empty</p>
-                   <p className="text-[11px] text-slate-300 font-medium mt-1">Select items from the menu <br/>to build an order.</p>
-                 </div>
+                  {/* Current Selection Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-primary-600 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded">New Selection</span>
+                      <span className="text-[10px] font-bold text-slate-400">{Object.keys(cart).length} Items</span>
+                    </div>
+
+                    {Object.entries(cart).map(([id, data]: [string, any]) => (
+                      <div key={id} className="space-y-3 animate-in fade-in slide-in-from-right-2 duration-200">
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1">
+                              <p className="text-[13px] font-bold text-slate-800 leading-tight">{data.name}</p>
+                              <p className="text-[11px] text-slate-400 font-semibold mt-0.5">₹{Math.round(data.price)} unit price</p>
+                          </div>
+                          <button onClick={() => deleteFromCart(parseInt(id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => removeFromCart(parseInt(id))} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm">
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-[13px] font-bold text-slate-700 w-6 text-center">{data.quantity}</span>
+                            <button onClick={() => addToCart({id, name: data.name, price: data.price, is_veg: data.is_veg})} className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm">
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <p className="text-[13px] font-bold text-slate-900">₹{(data.price * data.quantity).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {Object.keys(cart).length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                        <ShoppingCart className="w-12 h-12 text-slate-200 mb-4" />
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cart is empty</p>
+                        <p className="text-[10px] text-slate-300 font-medium mt-1 italic">Pick items from the menu <br/>to start a new dispatch.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* History Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded">Sent to Kitchen</span>
+                      <span className="text-[10px] font-bold text-slate-400">₹{Math.round(historyTotal).toLocaleString()}</span>
+                    </div>
+
+                    {historyItems.length > 0 ? (
+                      <div className="space-y-4">
+                        {historyItems.map((item: any) => (
+                          <div key={item.id} className="space-y-2.5 hover:bg-slate-50/50 p-3 rounded-2xl border border-transparent hover:border-slate-100 transition-all">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="flex-1">
+                                  <p className="text-[12px] font-bold text-slate-800 leading-tight flex items-center gap-1.5">
+                                    {item.menu_item_name}
+                                    <span className={cn(
+                                      "text-[8px] px-1 rounded uppercase tracking-tighter font-black",
+                                      item.status === 'READY' ? "bg-emerald-500 text-white" : "bg-amber-100 text-amber-700"
+                                    )}>
+                                      {item.status}
+                                    </span>
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">₹{Math.round(parseFloat(item.price_at_order)).toLocaleString()} unit price</p>
+                              </div>
+                              <button
+                                disabled={updatingHistoryId === item.id}
+                                onClick={() => deleteHistoryItem(item.id)}
+                                className="text-slate-300 hover:text-rose-500 transition-colors p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between bg-emerald-50/30 p-2 rounded-xl border border-emerald-100/50">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  disabled={updatingHistoryId === item.id}
+                                  onClick={() => updateHistoryQuantity(item, -1)}
+                                  className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 transition-all shadow-sm"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className="text-[13px] font-bold text-slate-700 w-6 text-center">
+                                  {updatingHistoryId === item.id ? '..' : item.quantity}
+                                </span>
+                                <button
+                                  disabled={updatingHistoryId === item.id}
+                                  onClick={() => updateHistoryQuantity(item, 1)}
+                                  className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-primary-600 transition-all shadow-sm"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <p className="text-[13px] font-bold text-slate-900">₹{Math.round(parseFloat(item.subtotal)).toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                        <Utensils className="w-12 h-12 text-slate-200 mb-4" />
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">No history found</p>
+                        <p className="text-[10px] text-slate-300 font-medium mt-1 italic">No items have been sent <br/>to the kitchen yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
             {/* Footer / Summary */}
             <div className="p-6 bg-slate-50/50 border-t border-slate-100 space-y-4 shrink-0">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Sub-Total Amount</span>
-                <span className="text-2xl font-bold text-slate-900 tracking-tight">₹{totalAmount.toLocaleString()}</span>
-              </div>
-              <button
-                disabled={Object.keys(cart).length === 0 || placing}
-                onClick={handlePlaceOrder}
-                className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 text-white font-bold py-4 rounded-2xl shadow-lg shadow-primary-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
-              >
-                {placing ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                    <>
-                        <span>Initialize Order Dispatch</span>
-                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </>
+                <div>
+                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-0.5">Grand Total Payable</p>
+                   <span className="text-2xl font-black text-slate-900 tracking-tight">₹{Math.round(cartTotal + historyTotal).toLocaleString()}</span>
+                </div>
+                {activeTab === 'NEW' && (
+                  <div className="text-right">
+                     <p className="text-[9px] font-bold text-primary-500 uppercase tracking-widest">To Dispatch</p>
+                     <p className="text-sm font-bold text-slate-700">₹{Math.round(cartTotal).toLocaleString()}</p>
+                  </div>
                 )}
-              </button>
-              <p className="text-[10px] text-slate-400 text-center font-medium">Items will be sent to Kitchen Display immediately.</p>
+              </div>
+
+              {activeTab === 'NEW' && (
+                <button
+                  disabled={Object.keys(cart).length === 0 || placing}
+                  onClick={handlePlaceOrder}
+                  className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 text-white font-bold py-4 rounded-2xl shadow-lg shadow-primary-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+                >
+                  {placing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                      <>
+                          <span>Dispatch Selection</span>
+                          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
