@@ -25,7 +25,7 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
   const [updatingHistoryId, setUpdatingHistoryId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'NEW' | 'EDIT'>('NEW');
 
-  // Synchronize history when split changes
+  // 1. Synchronize history/customer when data or split changes
   useEffect(() => {
     if (!tableId || isTakeaway) return;
 
@@ -40,10 +40,12 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
       setHistoryItems([]);
       setCustomerName('');
     }
-    // Don't reset cart here, let the user keep their selection if they switch splits?
-    // Actually, usually cart is per-table/split, but since this is a drawer it's safer to clear cart on split change too.
-    setCart({});
   }, [subTable, activeOrders, tableId, isTakeaway]);
+
+  // 2. Clear cart ONLY when switching tables or splits explicitly
+  useEffect(() => {
+    setCart({});
+  }, [tableId, subTable]);
 
   useEffect(() => {
     if (isOpen) {
