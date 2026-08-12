@@ -1,6 +1,11 @@
 from rest_framework import serializers
-from .models import Attendance, StaffPayment
+from .models import Attendance, StaffPayment, StaffProfile
 from apps.accounts.models import User
+
+class StaffProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StaffProfile
+        fields = ['address', 'joining_date', 'basic_salary', 'is_active']
 
 class AttendanceSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='user.username', read_only=True)

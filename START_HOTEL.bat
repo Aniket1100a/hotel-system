@@ -2,40 +2,46 @@
 TITLE Hotel Management System Launcher
 
 echo ====================================================
-echo   HOTEL CHATURTHI - SYSTEM LAUNCHER
+echo   HOTEL CHATURTHI - SYSTEM LAUNCHER (Robust)
 echo ====================================================
 echo.
 
-:: Kill any existing processes on these ports to prevent "Address already in use"
-echo Cleaning up existing processes...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000') do taskkill /f /pid %%a >nul 2>&1
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000') do taskkill /f /pid %%a >nul 2>&1
+:: 1. Clean up old processes
+echo [Step 1] Cleaning up old server processes...
+powershell -Command "Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue"
+powershell -Command "Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue"
 
-:: Start Django Backend
-echo [1/2] Starting Backend Server...
-start "BACKEND" /min cmd /k "cd backend && venv\Scripts\activate && python manage.py runserver 0.0.0.0:8000"
-
-:: Sync Bills to Local Container
-echo Archiving recent bills to BILL_STORAGE...
+:: 2. Sync digital receipts to local container
+echo [Step 2] Archiving latest bills to BILL_STORAGE...
 cmd /c "cd backend && venv\Scripts\activate && python export_receipts.py"
 
-:: Start React Frontend
-echo [2/2] Starting Admin Panel...
-start "FRONTEND" /min cmd /k "cd web-admin && npm run dev"
+:: 3. Start Backend
+echo [Step 3] Starting Backend (Django)...
+start "BACKEND - Django" cmd /k "cd backend && venv\Scripts\activate && python manage.py runserver 0.0.0.0:8000"
 
-:: Wait for servers to wake up
-echo Launching website in 8 seconds...
-timeout /t 8 >nul
+:: 4. Start Frontend
+echo [Step 4] Starting Admin Panel (Vite)...
+:: We use 'call' to ensure npm runs correctly in this environment
+start "FRONTEND - Web Admin" cmd /k "cd web-admin && npm run dev"
 
-:: Automatically open the website
+echo.
+echo Launching browser in 12 seconds...
+echo (Please do not close the black windows that opened)
+echo.
+
+timeout /t 12 >nul
+
+:: Automatically open the website using IP to avoid localhost resolution issues
 echo Opening Hotel System...
-start http://localhost:3000
+start http://127.0.0.1:3000
 
 echo.
 echo ====================================================
-echo   SUCCESS: Website is opening!
-echo   If you see "Refused to Connect", please wait 5
-echo   seconds and Refresh the page.
+echo   SUCCESS: Launch Sequence Complete!
+echo   - If you see an error in the browser, wait 5
+echo     seconds and press F5 to Refresh.
+echo   - If the black windows show errors, please check
+echo     your internet or dependencies.
 echo ====================================================
 echo.
 pause
