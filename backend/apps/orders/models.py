@@ -17,6 +17,7 @@ class Order(models.Model):
         TAKEAWAY = 'TAKEAWAY', 'Takeaway'
 
     table = models.ForeignKey(DiningTable, on_delete=models.PROTECT, related_name='orders', null=True, blank=True)
+    sub_table = models.CharField(max_length=5, blank=True, default='')
     waiter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='orders_taken')
     order_type = models.CharField(max_length=10, choices=OrderType.choices, default=OrderType.DINE_IN)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)

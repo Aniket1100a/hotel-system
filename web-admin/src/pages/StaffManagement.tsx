@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { UserPlus, Trash2, Loader2, ShieldCheck, Phone, User as UserIcon, X, Users, CalendarCheck, Wallet, Search, MoreVertical, Mail } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Loader2, ShieldCheck, Phone, User as UserIcon, X, Users, CalendarCheck, Wallet, Search, MoreVertical, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AttendanceSection from '@/components/staff/AttendanceSection';
 import PaymentSection from '@/components/staff/PaymentSection';
@@ -18,6 +18,7 @@ export default function StaffManagement() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'attendance' | 'payments'>('list');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -49,8 +50,17 @@ export default function StaffManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/auth/users/', formData);
+      if (editingMember) {
+        // For updates, password is optional
+        const payload = { ...formData };
+        if (!payload.password) delete (payload as any).password;
+        await api.patch(`/auth/users/${editingMember.id}/`, payload);
+      } else {
+        await api.post('/auth/users/', formData);
+      }
+
       setIsModalOpen(false);
+      setEditingMember(null);
       setFormData({
         username: '',
         password: '',
@@ -61,8 +71,21 @@ export default function StaffManagement() {
       });
       fetchStaff();
     } catch (error) {
-      console.error("Error creating staff:", error);
+      console.error("Error saving staff:", error);
     }
+  };
+
+  const openEditModal = (member: StaffMember) => {
+    setEditingMember(member);
+    setFormData({
+      username: member.username,
+      password: '', // Leave empty for security during edit
+      first_name: member.first_name,
+      last_name: member.last_name,
+      role: member.role,
+      phone_number: member.phone_number,
+    });
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id: number) => {
@@ -201,14 +224,18 @@ export default function StaffManagement() {
                           <td className="px-6 py-4 text-right">
                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                <button
+                                 onClick={() => openEditModal(member)}
+                                 className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                                 title="Edit Profile"
+                               >
+                                 <Edit2 className="w-4 h-4" />
+                               </button>
+                               <button
                                  onClick={() => handleDelete(member.id)}
                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                                  title="Delete Record"
                                >
                                  <Trash2 className="w-4 h-4" />
-                               </button>
-                               <button className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all">
-                                 <MoreVertical className="w-4 h-4" />
                                </button>
                              </div>
                           </td>
@@ -243,8 +270,10 @@ export default function StaffManagement() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-bold text-slate-900 text-[16px]">Onboard New Employee</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors">
+              <h3 className="font-bold text-slate-900 text-[16px]">
+                {editingMember ? `Update ${editingMember.username}` : 'Onboard New Employee'}
+              </h3>
+              <button onClick={() => { setIsModalOpen(false); setEditingMember(null); }} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -277,7 +306,8 @@ export default function StaffManagement() {
                   <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     required
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                    disabled={!!editingMember}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all disabled:opacity-50"
                     value={formData.username}
                     onChange={e => setFormData({...formData, username: e.target.value})}
                   />
@@ -285,9 +315,11 @@ export default function StaffManagement() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Access Password</label>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                  {editingMember ? 'New Password (Leave blank to keep current)' : 'Access Password'}
+                </label>
                 <input
-                  required
+                  required={!editingMember}
                   type="password"
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
                   value={formData.password}
@@ -323,7 +355,7 @@ export default function StaffManagement() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setEditingMember(null); }}
                   className="flex-1 px-6 py-3.5 rounded-xl text-[14px] font-bold text-slate-600 hover:bg-slate-100 transition-all"
                 >
                   Cancel
@@ -332,7 +364,7 @@ export default function StaffManagement() {
                   type="submit"
                   className="flex-[2] bg-primary-600 hover:bg-primary-700 text-white px-6 py-3.5 rounded-xl text-[14px] font-bold shadow-lg shadow-primary-200 transition-all active:scale-[0.98]"
                 >
-                  Finalize Registration
+                  {editingMember ? 'Save Changes' : 'Finalize Registration'}
                 </button>
               </div>
             </form>

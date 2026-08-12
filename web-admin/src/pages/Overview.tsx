@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/api/axios';
-import { Users, Utensils, ReceiptText, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, RefreshCcw, Receipt, LayoutGrid, Plus, ShoppingBag, ChevronRight } from 'lucide-react';
+import { Users, Utensils, ReceiptText, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Loader2, RefreshCcw, Receipt, LayoutGrid, Plus, ShoppingBag, ChevronRight, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { printDirectly } from '@/lib/printUtils';
@@ -38,11 +38,13 @@ interface SectionGroup {
 }
 
 export default function Overview() {
-  const { user } = useAuth();
+  const { user, canAccess } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [tablesBySection, setTablesBySection] = useState<SectionGroup>({});
   const [paymentMethods, setPaymentMethods] = useState<{[key: number]: string}>({});
+  const [customerNames, setCustomerNames] = useState<{[key: number]: string}>({});
+  const [discounts, setDiscounts] = useState<{[key: number]: string}>({});
   const [stats, setStats] = useState({
     tablesActive: 0,
     ordersToday: 0,
@@ -111,12 +113,14 @@ export default function Overview() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleGenerateBill = async (orderId: number, skipConfirm = false, orderData?: Order) => {
+  const handleGenerateBill = async (orderId: number, skipConfirm = false, orderData?: any) => {
     if (processingIds.has(orderId)) return;
     const order = orderData || activeOrders.find(o => o.id === orderId);
     if (order?.status === 'BILLED') return;
     const isTakeaway = order?.order_type === 'TAKEAWAY';
     const method = paymentMethods[orderId] || 'CASH';
+    const customerName = orderData?.customer_name || customerNames[orderId] || '';
+    const discountAmount = discounts[orderId] || '0';
 
     if (!skipConfirm && !isTakeaway) {
       if (!window.confirm(`Generate ${method} bill for this order?`)) return;
@@ -126,7 +130,9 @@ export default function Overview() {
     try {
       const res = await api.post('/billing/', {
         order: orderId,
-        payment_method: method
+        payment_method: method,
+        customer_name: customerName,
+        discount_amount: parseFloat(discountAmount) || 0
       });
       const invoice = res.data;
       let items = order?.items;
@@ -156,6 +162,26 @@ export default function Overview() {
     }
   };
 
+  const handleCancelOrder = async (orderId: number) => {
+    if (!window.confirm("Cancel this entire bill? This cannot be undone.")) return;
+    try {
+      await api.post(`/orders/${orderId}/cancel_order/`);
+      fetchDashboardData();
+    } catch (err) {
+      console.error("Failed to cancel order", err);
+    }
+  };
+
+  const handleCancelItem = async (itemId: number) => {
+    if (!window.confirm("Remove this item from the order?")) return;
+    try {
+      await api.delete(`/order-items/${itemId}/`);
+      fetchDashboardData();
+    } catch (err) {
+      console.error("Failed to delete item", err);
+    }
+  };
+
   const handleHandover = async (orderId: number) => {
     try {
       await api.post(`/orders/${orderId}/mark_handed_over/`);
@@ -169,8 +195,14 @@ export default function Overview() {
     fetchDashboardData();
     const orderType = newOrder?.order_type || newOrder?.orderType;
     const orderId = newOrder?.id;
+    const orderCustomerName = newOrder?.customer_name;
+
+    if (orderId && orderCustomerName) {
+      setCustomerNames(prev => ({ ...prev, [orderId]: orderCustomerName }));
+    }
+
     if (orderId && orderType === 'TAKEAWAY') {
-      handleGenerateBill(orderId, true, newOrder);
+      handleGenerateBill(orderId, true, { ...newOrder, customer_name: orderCustomerName });
     }
   };
 
@@ -190,7 +222,7 @@ export default function Overview() {
     { name: 'Net Revenue', value: `₹${stats.revenueToday.toLocaleString()}`, icon: ReceiptText, change: '+5%', trend: 'up', label: 'Today' },
   ];
 
-  const OrderCard = ({ order, paymentMethods, setPaymentMethods, handleGenerateBill, handleHandover, processingIds }: any) => {
+  const OrderCard = ({ order, paymentMethods, setPaymentMethods, customerNames, setCustomerNames, discounts, setDiscounts, handleGenerateBill, handleCancelOrder, handleCancelItem, handleHandover, processingIds }: any) => {
     const isProcessing = processingIds.has(order.id);
 
     return (
@@ -210,24 +242,54 @@ export default function Overview() {
               <h4 className="font-bold text-slate-800 text-[13px]">Order #{order.id}</h4>
             </div>
           </div>
-          <div className={cn(
-            "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-            order.status === 'PENDING' ? "bg-amber-50 text-amber-700 border-amber-100" :
-            order.status === 'PREPARING' ? "bg-blue-50 text-blue-700 border-blue-100" :
-            "bg-emerald-50 text-emerald-700 border-emerald-100"
-          )}>
-            {order.status}
-          </div>
+          <button
+            onClick={() => handleCancelOrder(order.id)}
+            className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+            title="Cancel Bill"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="p-5 flex-grow space-y-3">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cust. Name</label>
+                <input
+                  type="text"
+                  placeholder="Optional"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[12px] font-medium outline-none focus:ring-2 focus:ring-primary-500/10 transition-all"
+                  value={customerNames[order.id] || ''}
+                  onChange={(e) => setCustomerNames({ ...customerNames, [order.id]: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 text-rose-500">Discount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER'}
+                  className="w-full bg-rose-50/50 border border-rose-100 rounded-lg px-3 py-1.5 text-[12px] font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  value={discounts[order.id] || ''}
+                  onChange={(e) => setDiscounts({ ...discounts, [order.id]: e.target.value })}
+                />
+              </div>
+            </div>
             {order.items.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between">
+              <div key={item.id} className="flex items-center justify-between group/item">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-400 w-4">{item.quantity}x</span>
                   <span className="text-[13px] font-medium text-slate-700">{item.menu_item_name}</span>
                 </div>
-                <span className="text-[12px] font-semibold text-slate-500">₹{parseFloat(item.subtotal).toLocaleString()}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-[12px] font-semibold text-slate-500">₹{parseFloat(item.subtotal).toLocaleString()}</span>
+                  <button
+                    onClick={() => handleCancelItem(item.id)}
+                    className="opacity-0 group-hover/item:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
         </div>
@@ -257,7 +319,7 @@ export default function Overview() {
               <CheckCircle2 className="w-4 h-4" />
               Mark as Handed Over
             </button>
-          ) : (
+          ) : canAccess('billing_settle') ? (
             <button
               disabled={isProcessing}
               onClick={() => handleGenerateBill(order.id, false, order)}
@@ -266,6 +328,10 @@ export default function Overview() {
               {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
               {isProcessing ? 'Processing...' : 'Complete & Generate Bill'}
             </button>
+          ) : (
+            <div className="text-center py-2 px-4 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Settle via Biller
+            </div>
           )}
         </div>
       </div>
@@ -359,7 +425,7 @@ export default function Overview() {
                 <div className="h-px bg-slate-100 flex-grow"></div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-4">
-                {tables.map(table => (
+                {(tables as Table[]).map(table => (
                   <button
                     key={table.id}
                     onClick={() => openTableOrder(table.id, table.number)}
@@ -408,7 +474,13 @@ export default function Overview() {
                   order={order}
                   paymentMethods={paymentMethods}
                   setPaymentMethods={setPaymentMethods}
+                  customerNames={customerNames}
+                  setCustomerNames={setCustomerNames}
+                  discounts={discounts}
+                  setDiscounts={setDiscounts}
                   handleGenerateBill={handleGenerateBill}
+                  handleCancelOrder={handleCancelOrder}
+                  handleCancelItem={handleCancelItem}
                   handleHandover={handleHandover}
                   processingIds={processingIds}
                 />
@@ -442,7 +514,13 @@ export default function Overview() {
                   order={order}
                   paymentMethods={paymentMethods}
                   setPaymentMethods={setPaymentMethods}
+                  customerNames={customerNames}
+                  setCustomerNames={setCustomerNames}
+                  discounts={discounts}
+                  setDiscounts={setDiscounts}
                   handleGenerateBill={handleGenerateBill}
+                  handleCancelOrder={handleCancelOrder}
+                  handleCancelItem={handleCancelItem}
                   handleHandover={handleHandover}
                   processingIds={processingIds}
                 />
@@ -464,6 +542,7 @@ export default function Overview() {
         tableName={drawerConfig.tableName}
         isTakeaway={drawerConfig.isTakeaway}
         onOrderPlaced={onOrderPlacedHandler}
+        activeOrders={activeOrders}
       />
     </div>
   );

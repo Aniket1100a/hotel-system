@@ -10,18 +10,49 @@ interface OrderDrawerProps {
   tableName: string | null;
   onOrderPlaced: (newOrder?: any) => void;
   isTakeaway?: boolean;
+  activeOrders?: any[]; // Added to sync split data
 }
 
-export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrderPlaced, isTakeaway = false }: OrderDrawerProps) {
+export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrderPlaced, isTakeaway = false, activeOrders = [] }: OrderDrawerProps) {
   const [menu, setMenu] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number, is_veg: boolean}}>({});
+  const [subTable, setSubTable] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [cart, setCart] = useState<{[key: number]: {name: string, price: number, quantity: number, is_veg: boolean, existing?: boolean}}>({});
   const [loading, setLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
+
+  // Synchronize cart when split changes
+  useEffect(() => {
+    if (!tableId || isTakeaway) return;
+
+    const splitOrder = activeOrders.find(o =>
+      o.table === tableId && (o.sub_table || '') === subTable
+    );
+
+    if (splitOrder) {
+      const newCart: any = {};
+      splitOrder.items.forEach((item: any) => {
+        newCart[item.menu_item] = {
+          name: item.menu_item_name,
+          price: parseFloat(item.price_at_order),
+          quantity: item.quantity,
+          is_veg: true, // fallback
+          existing: true // mark as already placed
+        };
+      });
+      setCart(newCart);
+      setCustomerName(splitOrder.customer_name || '');
+    } else {
+      setCart({});
+      setCustomerName('');
+    }
+  }, [subTable, activeOrders, tableId, isTakeaway]);
 
   useEffect(() => {
     if (isOpen) {
       fetchMenu();
+      setSubTable('');
     }
   }, [isOpen]);
 
@@ -69,26 +100,27 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
     });
   };
 
-  const totalAmount = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalAmount = Object.values(cart).reduce((sum, item: any) => sum + (item.price * item.quantity), 0);
 
   const handlePlaceOrder = async () => {
     if (Object.keys(cart).length === 0) return;
 
     setPlacing(true);
     try {
-      const items = Object.entries(cart).map(([id, data]) => ({
+      const items = Object.entries(cart).map(([id, data]: [string, any]) => ({
         menu_item: parseInt(id),
         quantity: data.quantity
       }));
 
       const res = await api.post('/orders/', {
         table: tableId,
+        sub_table: subTable.toUpperCase(),
         order_type: isTakeaway ? 'TAKEAWAY' : 'DINE_IN',
         items: items
       });
 
       setCart({});
-      onOrderPlaced(res.data);
+      onOrderPlaced({ ...res.data, customer_name: customerName });
       onClose();
     } catch (err) {
       console.error("Error placing order:", err);
@@ -97,9 +129,31 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
     }
   };
 
-  const filteredMenu = menu.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredMenu = menu.filter(item => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+
+    const name = item.name.toLowerCase();
+
+    // 1. Regular search (contains)
+    if (name.includes(q)) return true;
+
+    // 2. Initial-based Shortcut search (e.g. "pm" matches "Paneer Masala")
+    if (q.length >= 2 && !q.includes(' ')) {
+      const words = name.split(/\s+/).filter(w => w.length > 0);
+      if (words.length >= q.length) {
+        let qIdx = 0;
+        for (const word of words) {
+          if (qIdx < q.length && word.startsWith(q[qIdx])) {
+            qIdx++;
+          }
+        }
+        if (qIdx === q.length) return true;
+      }
+    }
+
+    return false;
+  });
 
   return (
     <>
@@ -128,11 +182,31 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-[18px] tracking-tight">
-                {isTakeaway ? 'Takeaway Console' : `Table #${tableName} Selection`}
+                {isTakeaway ? 'Takeaway Console' : `Table #${tableName}${subTable} Selection`}
               </h3>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Digital Order Interface</p>
             </div>
           </div>
+
+          {!isTakeaway && (
+            <div className="flex items-center gap-1.5 bg-slate-100/50 p-1 rounded-xl border border-slate-200">
+               {['', 'A', 'B', 'C'].map((code) => (
+                 <button
+                   key={code}
+                   onClick={() => setSubTable(code)}
+                   className={cn(
+                     "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                     subTable === code
+                      ? "bg-white text-primary-700 shadow-sm border border-slate-200"
+                      : "text-slate-500 hover:text-slate-800"
+                   )}
+                 >
+                   {code === '' ? 'MAIN' : code}
+                 </button>
+               ))}
+            </div>
+          )}
+
           <button onClick={onClose} className="p-2.5 text-slate-400 hover:bg-slate-100 rounded-full transition-all">
             <X className="w-6 h-6" />
           </button>
@@ -196,7 +270,18 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {Object.entries(cart).map(([id, data]) => (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cust. Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="Enter guest name..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
+                  value={customerName}
+                  onChange={e => setCustomerName(e.target.value)}
+                />
+              </div>
+
+              {Object.entries(cart).map(([id, data]: [string, any]) => (
                 <div key={id} className="space-y-3">
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex-1">

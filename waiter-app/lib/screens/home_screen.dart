@@ -30,10 +30,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   DiningTable? _selectedTable;
   List<Order> _activeOrders = [];
   int? _activeOrderId;
+  String _subTable = '';
 
   // For large menus: Filtered items
   String _searchQuery = '';
   int? _activeCategoryId;
+  bool _isSearchVisible = false;
 
   // menuItemId -> quantity
   final Map<int, int> _cart = {};
@@ -85,13 +87,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       final orders = await _apiService.fetchActiveOrders(tableId);
       setState(() {
         _activeOrders = orders;
-        _cart.clear();
+        _cart.clear(); // Always start cart at 0 for additive logic
         if (_activeOrders.isNotEmpty) {
-          final order = _activeOrders.first;
+          final targetLabel = "${_selectedTable!.number}$_subTable";
+          final order = _activeOrders.firstWhere(
+            (o) => o.tableNumber == targetLabel,
+            orElse: () => _activeOrders.first
+          );
           _activeOrderId = order.id;
-          for (var item in order.items) {
-            _cart[item.menuItemId] = item.quantity;
-          }
+          // Note: We don't populate _cart from order history anymore
         } else {
           _activeOrderId = null;
         }
@@ -111,9 +115,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _selectedTable = table;
       _activeOrders = [];
       _activeOrderId = null;
+      _subTable = '';
       _cart.clear();
     });
     _fetchActiveOrders(table.id);
+  }
+
+  void _selectSplitOrder(String sub) {
+    setState(() {
+      _subTable = sub;
+      _activeOrderId = null;
+      _cart.clear();
+    });
+    _fetchActiveOrders(_selectedTable!.id);
   }
 
   void _changeQuantity(int menuItemId, int delta) {
@@ -163,7 +177,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         await _apiService.updateOrder(orderId: _activeOrderId!, items: items);
       } else {
         if (items.isEmpty) return;
-        await _apiService.placeOrder(tableId: _selectedTable!.id, items: items);
+        await _apiService.placeOrder(
+          tableId: _selectedTable!.id,
+          items: items,
+          subTable: _subTable,
+        );
       }
       
       if (!mounted) return;
@@ -223,41 +241,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      toolbarHeight: 70,
-      titleSpacing: 20,
+      toolbarHeight: 44,
+      titleSpacing: 12,
       elevation: 0,
       title: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 2),
-            ),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primarySoft,
-              child: Text(
-                widget.user.username.isNotEmpty ? widget.user.username[0].toUpperCase() : '?',
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 13),
-              ),
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: AppColors.primarySoft,
+            child: Text(
+              widget.user.username.isNotEmpty ? widget.user.username[0].toUpperCase() : '?',
+              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 10),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(widget.user.username, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+              Text(widget.user.username, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
               Row(
                 children: [
                   Container(
-                    width: 6,
-                    height: 6,
+                    width: 4,
+                    height: 4,
                     decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
                   ),
-                  const SizedBox(width: 4),
-                  Text('SYSTEM ONLINE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.5)),
+                  const SizedBox(width: 3),
+                  Text('ONLINE', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.5)),
                 ],
               ),
             ],
@@ -267,11 +278,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       actions: [
         IconButton(
           onPressed: _loadData,
-          icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.textSecondary),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.textSecondary),
         ),
+        const SizedBox(width: 8),
         IconButton(
           onPressed: _logout,
-          icon: const Icon(Icons.logout_rounded, size: 20, color: AppColors.danger),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          icon: const Icon(Icons.logout_rounded, size: 16, color: AppColors.danger),
         ),
         const SizedBox(width: 12),
       ],
@@ -336,16 +352,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildActiveOrderSummary() {
     if (_selectedTable == null) return const SizedBox.shrink();
 
-    final hasItems = _cart.isNotEmpty;
+    final hasCartItems = _cart.isNotEmpty;
     final isExisting = _activeOrderId != null;
 
+    // Aggregate existing items from active orders
+    final Map<int, int> existingItems = {};
+    if (isExisting && _activeOrders.isNotEmpty) {
+       final currentOrder = _activeOrders.firstWhere(
+         (o) => o.tableNumber == "${_selectedTable!.number}$_subTable",
+         orElse: () => _activeOrders.first
+       );
+       for (var item in currentOrder.items) {
+         existingItems[item.menuItemId] = (existingItems[item.menuItemId] ?? 0) + item.quantity;
+       }
+    }
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isExisting ? AppColors.primarySoft : AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isExisting ? AppColors.primary.withOpacity(0.2) : AppColors.border),
+        color: isExisting ? AppColors.primarySoft.withOpacity(0.2) : AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isExisting ? AppColors.primary.withOpacity(0.08) : AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,12 +382,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TABLE ${_selectedTable!.number} - ${isExisting ? 'LIVE ORDER' : 'NEW ORDER'}',
+                'TABLE ${_selectedTable!.number}$_subTable',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  fontSize: 11,
+                  fontSize: 9,
                   color: isExisting ? AppColors.primary : AppColors.textSecondary,
-                  letterSpacing: 0.8
+                  letterSpacing: 0.5
                 ),
               ),
               if (isExisting && _activeOrders.isNotEmpty)
@@ -370,36 +398,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
             ],
           ),
-          if (hasItems) ...[
-            const SizedBox(height: 12),
-            ..._cart.entries.map((entry) {
-              final menuItem = _findMenuItemById(entry.key);
-              if (menuItem == null) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
+
+          // Order History Scroller
+          if (existingItems.isNotEmpty || hasCartItems)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 80),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
-                      child: Text('${entry.value}x', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: AppColors.primary)),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(menuItem.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary)),
-                    ),
-                    Text('₹${(menuItem.price * entry.value).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textSecondary)),
+                    // 1. Existing items
+                    ...existingItems.entries.map((entry) {
+                      final menuItem = _findMenuItemById(entry.key);
+                      if (menuItem == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Text('${entry.value}x', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 10, color: AppColors.textMuted)),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(menuItem.name, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 12),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+
+                    if (existingItems.isNotEmpty && hasCartItems)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        child: Divider(height: 1, color: AppColors.borderLight),
+                      ),
+
+                    // 2. Cart items
+                    ..._cart.entries.map((entry) {
+                      final menuItem = _findMenuItemById(entry.key);
+                      if (menuItem == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Text('${entry.value}x', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.primary)),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(menuItem.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textPrimary))),
+                            Text('₹${(menuItem.price * entry.value).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: AppColors.primary)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ],
                 ),
-              );
-            }).toList(),
-          ] else ...[
-            const SizedBox(height: 8),
-            Text(
-              'Add order for Table ${_selectedTable!.number}.',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted, fontStyle: FontStyle.italic),
+              ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('No items ordered yet.', style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontStyle: FontStyle.italic)),
             ),
-          ],
         ],
       ),
     );
@@ -413,7 +468,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text('TABLE MANAGEMENT', style: Theme.of(context).textTheme.labelSmall),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('TABLE MANAGEMENT', style: Theme.of(context).textTheme.labelSmall),
+                if (_selectedTable != null)
+                  Row(
+                    children: ['A', 'B', 'C'].map((sub) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: InkWell(
+                        onTap: () => _selectSplitOrder(_subTable == sub ? '' : sub),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _subTable == sub ? AppColors.primary : AppColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: _subTable == sub ? AppColors.primary : AppColors.border),
+                          ),
+                          child: Text(
+                            'SPLIT $sub',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: _subTable == sub ? Colors.white : AppColors.textSecondary
+                            ),
+                          ),
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           SingleChildScrollView(
@@ -436,66 +521,87 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSearchAndCategories() {
-    return Column(
-      children: [
-        // Search Bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (v) => setState(() => _searchQuery = v),
-            decoration: InputDecoration(
-              hintText: 'Search menu (e.g. Pasta, Coffee)',
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
-              filled: true,
-              fillColor: AppColors.background,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          // Half-width Search Bar
+          Expanded(
+            flex: 5,
+            child: SizedBox(
+              height: 34,
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                style: const TextStyle(fontSize: 11),
+                decoration: InputDecoration(
+                  hintText: 'Search (pm, sh)',
+                  hintStyle: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                  prefixIcon: const Icon(Icons.search_rounded, size: 14, color: AppColors.textMuted),
+                  suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.close_rounded, size: 14, color: AppColors.textMuted),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = '';
+                            _searchController.clear();
+                          });
+                        },
+                      )
+                    : null,
+                  filled: true,
+                  fillColor: AppColors.background,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
             ),
           ),
-        ),
 
-        // Horizontal Categories for large menus
-        if (_searchQuery.isEmpty)
-          Container(
-            height: 40,
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _menu.length,
-              itemBuilder: (context, index) {
-                final cat = _menu[index];
-                final isSelected = _activeCategoryId == cat.id;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(cat.name),
-                    selected: isSelected,
-                    onSelected: (s) {
-                      if (s) {
-                        setState(() => _activeCategoryId = cat.id);
-                        _scrollToTop();
-                      }
-                    },
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      fontSize: 12,
+          const SizedBox(width: 8),
+
+          // Scrollable Categories in remaining half
+          Expanded(
+            flex: 5,
+            child: Container(
+              height: 30,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _menu.length,
+                itemBuilder: (context, index) {
+                  final cat = _menu[index];
+                  final isSelected = _activeCategoryId == cat.id;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: ChoiceChip(
+                      label: Text(cat.name),
+                      selected: isSelected,
+                      onSelected: (s) {
+                        if (s) {
+                          setState(() => _activeCategoryId = cat.id);
+                          _scrollToTop();
+                        }
+                      },
+                      selectedColor: AppColors.primary,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 9,
+                      ),
+                      backgroundColor: AppColors.background,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                      side: BorderSide.none,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      showCheckmark: false,
                     ),
-                    backgroundColor: AppColors.background,
-                    side: BorderSide.none,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    showCheckmark: false,
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -509,10 +615,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     List<MenuItem> displayItems = [];
 
     if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase().trim();
       for (var cat in _menu) {
-        displayItems.addAll(cat.items.where((i) =>
-          i.name.toLowerCase().contains(_searchQuery.toLowerCase()) && i.isAvailable
-        ));
+        displayItems.addAll(cat.items.where((i) {
+          if (!i.isAvailable) return false;
+          final name = i.name.toLowerCase();
+
+          // 1. Regular search (contains)
+          if (name.contains(q)) return true;
+
+          // 2. Initial-based Shortcut search (e.g. "pm" matches "Paneer Masala")
+          if (q.length >= 2 && !q.contains(' ')) {
+            final words = name.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+
+            // Check if q matches initials of words in sequence
+            int qIdx = 0;
+            for (var word in words) {
+              if (qIdx < q.length && word.startsWith(q[qIdx])) {
+                qIdx++;
+              }
+            }
+            if (qIdx == q.length) return true;
+          }
+
+          return false;
+        }));
       }
     } else if (_activeCategoryId != null) {
       final activeCat = _menu.firstWhere((c) => c.id == _activeCategoryId);
@@ -535,38 +662,63 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     return ListView.separated(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+      padding: const EdgeInsets.fromLTRB(16, 5, 16, 80),
       itemCount: displayItems.length,
       separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.borderLight),
       itemBuilder: (context, index) {
         final item = displayItems[index];
         final qty = _cart[item.id] ?? 0;
 
+        // Find existing quantity from active order history
+        int existingQty = 0;
+        if (_activeOrderId != null && _activeOrders.isNotEmpty) {
+           final currentOrder = _activeOrders.firstWhere(
+             (o) => o.tableNumber == "${_selectedTable!.number}$_subTable",
+             orElse: () => _activeOrders.first
+           );
+           final existingItem = currentOrder.items.where((i) => i.menuItemId == item.id).firstOrNull;
+           if (existingItem != null) {
+             existingQty = existingItem.quantity;
+           }
+        }
+
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   item.isVeg ? Icons.eco_rounded : Icons.kebab_dining_rounded,
                   color: item.isVeg ? Colors.green.withOpacity(0.5) : Colors.brown.withOpacity(0.5),
-                  size: 20,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text('₹${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.primary)),
+                    Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    const SizedBox(height: 1),
+                    Row(
+                      children: [
+                        Text('₹${item.price.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: AppColors.primary)),
+                        if (existingQty > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0.5),
+                            decoration: BoxDecoration(color: AppColors.successSoft, borderRadius: BorderRadius.circular(3)),
+                            child: Text('SENT: $existingQty', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.success)),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -588,11 +740,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final canPlaceOrder = _selectedTable != null && (hasItems || isEditing);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
         color: Colors.white,
         border: const Border(top: BorderSide(color: AppColors.borderLight)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, -2))],
       ),
       child: Row(
         children: [
@@ -602,21 +754,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  isEditing ? 'EDITING ACTIVE ORDER' : (hasItems ? '$_cartItemCount ITEMS IN CART' : 'SELECT ITEMS'),
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isEditing ? AppColors.primary : AppColors.textMuted, letterSpacing: 0.5),
+                  isEditing ? 'ACTIVE ORDER' : (hasItems ? '$_cartItemCount ITEMS' : 'SELECT ITEMS'),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: isEditing ? AppColors.primary : AppColors.textMuted, letterSpacing: 0.5),
                 ),
                 Text(
-                  '₹${_cartTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                  '₹${_cartTotal.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
-            child: AppButton(
-              label: _selectedTable == null ? 'SELECT TABLE' : (isEditing ? 'UPDATE ORDER' : 'SEND ORDER'),
-              onPressed: canPlaceOrder ? _placeOrder : null,
+            child: SizedBox(
+              height: 48,
+              child: AppButton(
+                label: _selectedTable == null ? 'SELECT TABLE' : (isEditing ? 'UPDATE ORDER' : 'SEND ORDER'),
+                onPressed: canPlaceOrder ? _placeOrder : null,
+              ),
             ),
           ),
         ],

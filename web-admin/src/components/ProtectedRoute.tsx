@@ -1,11 +1,11 @@
 import React from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, UtensilsCrossed, Receipt, LogOut, Loader2, Menu, Users, Package, Square, BarChart2, Bell, Settings, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Utensils, Receipt, LogOut, Loader2, Menu, Users, Package, Square, BarChart2, Bell, Settings, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ProtectedRoute() {
-  const { user, loading, logout } = useAuth();
+  const { user, settings, loading, logout, canAccess } = useAuth();
   const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
@@ -21,18 +21,18 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Menu & Catalog', href: '/menu', icon: UtensilsCrossed },
-    { name: 'Live Orders', href: '/billing', icon: Receipt },
+  const navList = [
+    { id: 'dashboard', name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { id: 'menu', name: 'Menu & Catalog', href: '/menu', icon: UtensilsCrossed },
+    { id: 'billing', name: 'Billing History', href: '/billing', icon: Receipt },
+    { id: 'kot', name: 'Kitchen KOT', href: '/kot', icon: Utensils },
+    { id: 'analytics', name: 'Analytics', href: '/reports', icon: BarChart2 },
+    { id: 'inventory', name: 'Inventory', href: '/inventory', icon: Package },
+    { id: 'staff', name: 'Staff Management', href: '/staff', icon: Users },
+    { id: 'tables', name: 'Table Management', href: '/tables', icon: Square },
   ];
 
-  if (user.role === 'ADMIN' || user.role === 'MANAGER') {
-    navigation.push({ name: 'Analytics', href: '/reports', icon: BarChart2 });
-    navigation.push({ name: 'Inventory', href: '/inventory', icon: Package });
-    navigation.push({ name: 'Staff Management', href: '/staff', icon: Users });
-    navigation.push({ name: 'Table Management', href: '/tables', icon: Square });
-  }
+  const navigation = navList.filter(item => canAccess(item.id));
 
   return (
     <div className="h-screen bg-[#F8FAFC] flex font-sans text-slate-900 overflow-hidden">

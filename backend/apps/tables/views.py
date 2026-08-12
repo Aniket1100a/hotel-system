@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import IsAdminOrManager
 from .models import DiningTable, TableSection
 from .serializers import DiningTableSerializer, TableSectionSerializer
+from apps.orders.models import Order
 
 
 class TableSectionViewSet(viewsets.ModelViewSet):
@@ -33,13 +34,19 @@ class DiningTableViewSet(viewsets.ModelViewSet):
             )
 
         is_paid = request.data.get('is_paid', True)
+        active_orders = table.orders.filter(status__in=['PENDING', 'PREPARING', 'SERVED'])
 
-        # Mark table as FREE
-        table.status = DiningTable.Status.FREE
-        table.save()
+        # Only mark table as FREE if NO other active orders exist for any splits
+        has_other_splits = Order.objects.filter(
+            table=table,
+            status__in=['PENDING', 'PREPARING', 'SERVED']
+        ).exclude(id__in=[o.id for o in active_orders]).exists()
+
+        if not has_other_splits:
+            table.status = DiningTable.Status.FREE
+            table.save()
 
         # Handle active orders
-        active_orders = table.orders.filter(status__in=['PENDING', 'PREPARING', 'SERVED'])
         for order in active_orders:
             if is_paid:
                 order.status = 'BILLED'
@@ -47,5 +54,5 @@ class DiningTableViewSet(viewsets.ModelViewSet):
                 order.status = 'CANCELLED'
             order.save()
 
-        # TODO: Log this action for audit
-        return Response({'status': f'Table {table.number} closed ({ "Paid" if is_paid else "Unpaid" })'})
+        status_msg = "Table fully closed" if not has_other_splits else "Current split closed"
+        return Response({'status': f'{status_msg} ({ "Paid" if is_paid else "Unpaid" })'})

@@ -381,7 +381,21 @@ export default function TableManagement() {
                 <select
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none appearance-none"
                   value={tableForm.section}
-                  onChange={e => setTableForm({...tableForm, section: e.target.value})}
+                  onChange={e => {
+                    const sectionId = e.target.value;
+                    let nextNumber = tableForm.number;
+
+                    // Logic: If adding a new table and section is chosen, suggest next number starting from 1
+                    if (!editingTable && sectionId) {
+                       const sectionTables = tables.filter(t => t.section === Number(sectionId));
+                       const numbers = sectionTables
+                         .map(t => parseInt(t.number))
+                         .filter(n => !isNaN(n));
+                       nextNumber = (numbers.length > 0 ? Math.max(...numbers) + 1 : 1).toString();
+                    }
+
+                    setTableForm({...tableForm, section: sectionId, number: nextNumber});
+                  }}
                 >
                   <option value="">Select Floor Section...</option>
                   {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}

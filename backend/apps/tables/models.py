@@ -18,13 +18,14 @@ class DiningTable(models.Model):
         OCCUPIED = 'OCCUPIED', 'Occupied'
         RESERVED = 'RESERVED', 'Reserved'
 
-    number = models.CharField(max_length=10, unique=True)
+    number = models.CharField(max_length=10)
     capacity = models.PositiveIntegerField(default=4)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.FREE)
     section = models.ForeignKey(TableSection, on_delete=models.SET_NULL, null=True, related_name='tables')
 
     class Meta:
-        ordering = ['number']
+        ordering = ['section__display_order', 'number']
+        unique_together = ['number', 'section']
 
     def __str__(self):
-        return f"Table {self.number} ({self.status})"
+        return f"{self.section.name if self.section else 'Global'} - Table {self.number}"
