@@ -17,6 +17,13 @@ interface StaffMember {
     joining_date: string;
     basic_salary: string;
     is_active: boolean;
+    id_proof_number?: string;
+    bank_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    overtime_rate_per_hour?: string;
   };
 }
 
@@ -27,6 +34,7 @@ export default function StaffManagement() {
   const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'attendance' | 'payments'>('list');
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({ onDuty: 0, totalStaff: 0 });
 
   const [formData, setFormData] = useState({
     username: '',
@@ -38,13 +46,28 @@ export default function StaffManagement() {
     address: '',
     joining_date: new Date().toISOString().split('T')[0],
     basic_salary: '',
+    id_proof_number: '',
+    bank_name: '',
+    account_number: '',
+    ifsc_code: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    overtime_rate_per_hour: '0',
   });
 
   const fetchStaff = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/auth/users/');
-      setStaff(res.data);
+      const [staffRes, attRes] = await Promise.all([
+        api.get('/auth/users/'),
+        api.get(`/staff/attendance/?date=${new Date().toISOString().split('T')[0]}`)
+      ]);
+      setStaff(staffRes.data);
+      const onDutyCount = attRes.data.filter((a: any) => a.status === 'PRESENT').length;
+      setStats({
+        onDuty: onDutyCount,
+        totalStaff: staffRes.data.length
+      });
     } catch (error) {
       console.error("Error fetching staff:", error);
     } finally {
@@ -64,7 +87,14 @@ export default function StaffManagement() {
         profile: {
           address: formData.address,
           joining_date: formData.joining_date,
-          basic_salary: formData.basic_salary || '0'
+          basic_salary: formData.basic_salary || '0',
+          id_proof_number: formData.id_proof_number,
+          bank_name: formData.bank_name,
+          account_number: formData.account_number,
+          ifsc_code: formData.ifsc_code,
+          emergency_contact_name: formData.emergency_contact_name,
+          emergency_contact_phone: formData.emergency_contact_phone,
+          overtime_rate_per_hour: formData.overtime_rate_per_hour || '0'
         }
       };
 
@@ -87,6 +117,13 @@ export default function StaffManagement() {
         address: '',
         joining_date: new Date().toISOString().split('T')[0],
         basic_salary: '',
+        id_proof_number: '',
+        bank_name: '',
+        account_number: '',
+        ifsc_code: '',
+        emergency_contact_name: '',
+        emergency_contact_phone: '',
+        overtime_rate_per_hour: '0',
       });
       fetchStaff();
     } catch (error) {
@@ -106,6 +143,13 @@ export default function StaffManagement() {
       address: member.profile?.address || '',
       joining_date: member.profile?.joining_date || new Date().toISOString().split('T')[0],
       basic_salary: member.profile?.basic_salary || '',
+      id_proof_number: member.profile?.id_proof_number || '',
+      bank_name: member.profile?.bank_name || '',
+      account_number: member.profile?.account_number || '',
+      ifsc_code: member.profile?.ifsc_code || '',
+      emergency_contact_name: member.profile?.emergency_contact_name || '',
+      emergency_contact_phone: member.profile?.emergency_contact_phone || '',
+      overtime_rate_per_hour: member.profile?.overtime_rate_per_hour || '0',
     });
     setIsModalOpen(true);
   };
@@ -135,7 +179,18 @@ export default function StaffManagement() {
             Manage your organization's workforce, permissions, and payroll.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Staff</p>
+              <p className="text-lg font-black text-emerald-600">{stats.onDuty} / {stats.totalStaff}</p>
+            </div>
+            <div className="h-8 w-[1px] bg-slate-200"></div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Load</p>
+              <p className="text-lg font-black text-primary-600">{Math.round((stats.onDuty / (stats.totalStaff || 1)) * 100)}%</p>
+            </div>
+          </div>
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-primary-700 transition-all active:scale-95"
@@ -152,7 +207,7 @@ export default function StaffManagement() {
           {[
             { id: 'list', label: 'Directory', icon: Users },
             { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-            { id: 'payments', label: 'Payroll', icon: Wallet },
+            { id: 'payments', label: 'Payroll & Advances', icon: Wallet },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -300,7 +355,7 @@ export default function StaffManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">First Name</label>
@@ -372,14 +427,76 @@ export default function StaffManagement() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Basic Salary (₹)</label>
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Overtime Rate (₹/hr)</label>
                   <input
                     type="number"
                     placeholder="0"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
-                    value={formData.basic_salary}
-                    onChange={e => setFormData({...formData, basic_salary: e.target.value})}
+                    value={formData.overtime_rate_per_hour}
+                    onChange={e => setFormData({...formData, overtime_rate_per_hour: e.target.value})}
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Bank & Identity (Optional)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">ID Proof (Aadhar/PAN)</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.id_proof_number}
+                      onChange={e => setFormData({...formData, id_proof_number: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Bank Name</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.bank_name}
+                      onChange={e => setFormData({...formData, bank_name: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Account Number</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.account_number}
+                      onChange={e => setFormData({...formData, account_number: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">IFSC Code</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.ifsc_code}
+                      onChange={e => setFormData({...formData, ifsc_code: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Emergency Contact (Optional)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Contact Name</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.emergency_contact_name}
+                      onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">Contact Phone</label>
+                    <input
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] font-medium focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                      value={formData.emergency_contact_phone}
+                      onChange={e => setFormData({...formData, emergency_contact_phone: e.target.value})}
+                    />
+                  </div>
                 </div>
               </div>
 

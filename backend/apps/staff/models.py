@@ -84,5 +84,14 @@ class StaffProfile(models.Model):
     basic_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
 
+    # New optional fields
+    id_proof_number = models.CharField(max_length=50, blank=True, null=True)
+    bank_name = models.CharField(max_length=100, blank=True, null=True)
+    account_number = models.CharField(max_length=50, blank=True, null=True)
+    ifsc_code = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    overtime_rate_per_hour = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
     def __str__(self):
         return f"Profile for {self.user.username}"

@@ -49,6 +49,12 @@ export default function AttendanceSection() {
       data.append('status', nextStatus);
       if (file) data.append('attachment', file);
 
+      if (nextStatus === 'PRESENT') {
+          // Default to 10 AM to 10 PM
+          data.append('check_in', '10:00:00');
+          data.append('check_out', '22:00:00');
+      }
+
       if (record) {
         await api.patch(`/staff/attendance/${record.id}/`, data, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -66,6 +72,19 @@ export default function AttendanceSection() {
     } finally {
       setSaving(null);
     }
+  };
+
+  const markAllPresent = async () => {
+      if (!window.confirm("Mark all staff as present with default 12-hour shift (10AM - 10PM)?")) return;
+      setLoading(true);
+      try {
+          await api.post('/staff/attendance/bulk_mark_present/');
+          fetchData();
+      } catch (err) {
+          console.error("Error bulk marking present:", err);
+      } finally {
+          setLoading(false);
+      }
   };
 
   const uploadProof = async (userId: number, file: File) => {
@@ -136,12 +155,21 @@ export default function AttendanceSection() {
           </div>
 
           {viewMode === 'daily' ? (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-            />
+            <>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
+              />
+              <button
+                onClick={markAllPresent}
+                className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-[11px] font-bold shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Mark All Present
+              </button>
+            </>
           ) : (
             <input
               type="month"

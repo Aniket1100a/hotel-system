@@ -5,7 +5,11 @@ from apps.accounts.models import User
 class StaffProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffProfile
-        fields = ['address', 'joining_date', 'basic_salary', 'is_active']
+        fields = [
+            'address', 'joining_date', 'basic_salary', 'is_active',
+            'id_proof_number', 'bank_name', 'account_number', 'ifsc_code',
+            'emergency_contact_name', 'emergency_contact_phone', 'overtime_rate_per_hour'
+        ]
 
 class AttendanceSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='user.username', read_only=True)

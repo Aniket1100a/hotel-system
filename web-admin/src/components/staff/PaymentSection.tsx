@@ -6,7 +6,10 @@ import { cn } from '@/lib/utils';
 export default function PaymentSection() {
   const [staff, setStaff] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [payroll, setPayroll] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'history' | 'payroll'>('history');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -22,12 +25,17 @@ export default function PaymentSection() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [staffRes, payRes] = await Promise.all([
-        api.get('/auth/users/'),
-        api.get('/staff/payments/')
-      ]);
-      setStaff(staffRes.data);
-      setPayments(payRes.data);
+      if (viewMode === 'history') {
+        const [staffRes, payRes] = await Promise.all([
+          api.get('/auth/users/'),
+          api.get('/staff/payments/')
+        ]);
+        setStaff(staffRes.data);
+        setPayments(payRes.data);
+      } else {
+        const res = await api.get(`/staff/profiles/payroll_preview/?month=${selectedMonth}`);
+        setPayroll(res.data);
+      }
     } catch (err) {
       console.error("Error fetching payments:", err);
     } finally {
@@ -37,7 +45,7 @@ export default function PaymentSection() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [viewMode, selectedMonth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,24 +98,64 @@ export default function PaymentSection() {
     <div className="space-y-6">
       {/* Search & Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search transactions..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex p-1 bg-white rounded-xl border border-slate-200">
+             <button
+              onClick={() => setViewMode('history')}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
+                viewMode === 'history' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+             >
+               Transaction History
+             </button>
+             <button
+              onClick={() => setViewMode('payroll')}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
+                viewMode === 'payroll' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+             >
+               Payroll Preview
+             </button>
+          </div>
+
+          {viewMode === 'payroll' && (
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
+            />
+          )}
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-primary-700 transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          Record New Entry
-        </button>
+        {viewMode === 'history' ? (
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center justify-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-primary-700 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              Record Entry
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+             <Banknote className="w-4 h-4 text-blue-600" />
+             <span className="text-[11px] font-bold text-blue-700 uppercase">Automated Calculations</span>
+          </div>
+        )}
       </div>
 
       {/* History Table */}
@@ -117,7 +165,7 @@ export default function PaymentSection() {
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
             <p className="text-[11px] font-bold uppercase tracking-widest">Compiling Records...</p>
           </div>
-        ) : (
+        ) : viewMode === 'history' ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -195,6 +243,54 @@ export default function PaymentSection() {
                        <h3 className="text-slate-800 font-bold">No transactions found</h3>
                        <p className="text-slate-400 text-sm font-medium mt-1">Start recording payroll and advances.</p>
                     </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employee</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attendance</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Earned Salary</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Overtime Pay</th>
+                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Advances</th>
+                  <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Payable</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {payroll.map(item => (
+                  <tr key={item.user_id} className="hover:bg-slate-50/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="text-[14px] font-bold text-slate-800">{item.full_name}</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Base: ₹{Math.round(item.basic_salary).toLocaleString()}</p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-[13px] font-bold text-slate-600">{item.days_present} Days</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-[13px] font-bold text-slate-700">₹{Math.round((item.basic_salary / 30) * item.days_present).toLocaleString()}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-[13px] font-bold text-indigo-600">₹{Math.round(item.overtime_pay).toLocaleString()}</span>
+                      <p className="text-[9px] text-indigo-400 font-bold">({item.total_overtime}h)</p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="text-[13px] font-bold text-rose-600">₹{Math.round(item.advances_taken).toLocaleString()}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="text-[15px] font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
+                        ₹{item.net_payable.toLocaleString()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {payroll.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-20 text-center text-slate-400 italic">No payroll data available.</td>
                   </tr>
                 )}
               </tbody>
