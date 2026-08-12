@@ -340,6 +340,15 @@ export default function Overview() {
 
   return (
     <div className="space-y-8">
+      {/* Floating Quick Action (Mobile/Scroll) */}
+      <button
+        onClick={openTakeawayOrder}
+        className="fixed bottom-8 right-8 z-40 flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl text-[14px] font-bold shadow-2xl hover:bg-slate-800 transition-all active:scale-95"
+      >
+        <Plus className="w-5 h-5" />
+        Quick Takeaway
+      </button>
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -350,13 +359,6 @@ export default function Overview() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={openTakeawayOrder}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[13px] font-bold shadow-sm hover:bg-slate-800 transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            Quick Takeaway
-          </button>
           <button
             onClick={() => { setLoading(true); fetchDashboardData(); }}
             className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl shadow-sm transition-all"
@@ -453,9 +455,9 @@ export default function Overview() {
       </section>
 
       {/* Orders Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Dine-in Section */}
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Dine-in Section (Scrolls naturally) */}
+        <div className="lg:col-span-8 space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                <div className="w-2.5 h-2.5 rounded-full bg-primary-500 shadow-sm shadow-primary-200 animate-pulse"></div>
@@ -494,8 +496,8 @@ export default function Overview() {
           )}
         </div>
 
-        {/* Takeaway Section */}
-        <div className="space-y-5">
+        {/* Takeaway Section (Sticky/Fixed while scrolling) */}
+        <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                <ShoppingBag className="w-4 h-4 text-slate-900" />
@@ -506,32 +508,34 @@ export default function Overview() {
             </span>
           </div>
 
-          {activeOrders.filter(o => o.order_type === 'TAKEAWAY').length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {activeOrders.filter(o => o.order_type === 'TAKEAWAY').map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  paymentMethods={paymentMethods}
-                  setPaymentMethods={setPaymentMethods}
-                  customerNames={customerNames}
-                  setCustomerNames={setCustomerNames}
-                  discounts={discounts}
-                  setDiscounts={setDiscounts}
-                  handleGenerateBill={handleGenerateBill}
-                  handleCancelOrder={handleCancelOrder}
-                  handleCancelItem={handleCancelItem}
-                  handleHandover={handleHandover}
-                  processingIds={processingIds}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
-              <ShoppingBag className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-[12px] font-semibold uppercase tracking-wider">No active takeaway</p>
-            </div>
-          )}
+          <div className="overflow-y-auto max-h-[calc(100vh-200px)] custom-scrollbar pr-1">
+            {activeOrders.filter(o => o.order_type === 'TAKEAWAY').length > 0 ? (
+              <div className="flex flex-col gap-5">
+                {activeOrders.filter(o => o.order_type === 'TAKEAWAY').map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    paymentMethods={paymentMethods}
+                    setPaymentMethods={setPaymentMethods}
+                    customerNames={customerNames}
+                    setCustomerNames={setCustomerNames}
+                    discounts={discounts}
+                    setDiscounts={setDiscounts}
+                    handleGenerateBill={handleGenerateBill}
+                    handleCancelOrder={handleCancelOrder}
+                    handleCancelItem={handleCancelItem}
+                    handleHandover={handleHandover}
+                    processingIds={processingIds}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+                <ShoppingBag className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+                <p className="text-slate-400 text-[12px] font-semibold uppercase tracking-wider">No active takeaway</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
