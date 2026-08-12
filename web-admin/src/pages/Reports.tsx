@@ -115,7 +115,7 @@ export default function Reports() {
               <TrendingUp className="w-6 h-6" />
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">This Month's Revenue</p>
-            <p className="text-4xl font-black tracking-tighter mt-2">₹{data?.this_month_total.toLocaleString()}</p>
+            <p className="text-4xl font-black tracking-tighter mt-2">₹{Math.round(data?.this_month_total).toLocaleString()}</p>
             <div className="mt-4 flex items-center gap-2">
                 <span className="bg-white/20 px-2 py-1 rounded-lg text-[10px] font-black">+12.5%</span>
                 <span className="text-[10px] font-bold opacity-60">vs last month</span>
@@ -130,7 +130,7 @@ export default function Reports() {
           </div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Daily Average</p>
           <p className="text-3xl font-black text-slate-900 tracking-tighter mt-2">
-            ₹{data && data.daily.length > 0 ? (data.this_month_total / new Date().getDate()).toFixed(0).toLocaleString() : '0'}
+            ₹{data && data.daily.length > 0 ? Math.round(data.this_month_total / new Date().getDate()).toLocaleString() : '0'}
           </p>
           <p className="mt-2 text-[10px] font-bold text-slate-400">Based on current month sales</p>
         </div>
@@ -204,7 +204,7 @@ export default function Reports() {
                                         <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100">Settled</span>
                                     </td>
                                     <td className="px-6 py-5 text-right whitespace-nowrap">
-                                        <span className="text-sm font-black text-slate-900 tracking-tight">₹{parseFloat(item.total).toLocaleString()}</span>
+                                        <span className="text-sm font-black text-slate-900 tracking-tight">₹{Math.round(parseFloat(item.total)).toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-5 text-right">
                                         <button
@@ -247,7 +247,7 @@ export default function Reports() {
                                     </div>
                                     <div className="flex items-center gap-6">
                                         <div className="text-right">
-                                            <p className="text-xl font-black text-indigo-600 tracking-tight">₹{monthTotal.toLocaleString()}</p>
+                                            <p className="text-xl font-black text-indigo-600 tracking-tight">₹{Math.round(monthTotal).toLocaleString()}</p>
                                             <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total Monthly Settlement</p>
                                         </div>
                                         <ChevronDown className={cn("w-5 h-5 text-slate-300 transition-transform duration-300", isExpanded && "rotate-180")} />
@@ -270,7 +270,7 @@ export default function Reports() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-6">
-                                                    <span className="text-sm font-black text-slate-700">₹{parseFloat(day.total).toLocaleString()}</span>
+                                                    <span className="text-sm font-black text-slate-700">₹{Math.round(parseFloat(day.total)).toLocaleString()}</span>
                                                     <button
                                                         onClick={() => fetchDailyDetails(day.date)}
                                                         className="p-2 text-slate-300 group-hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
@@ -354,7 +354,7 @@ export default function Reports() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-black text-slate-900 tracking-tighter">₹{parseFloat(inv.total_amount).toLocaleString()}</p>
+                        <p className="text-lg font-black text-slate-900 tracking-tighter">₹{Math.round(parseFloat(inv.total_amount)).toLocaleString()}</p>
                         <p className="text-[9px] font-black text-emerald-500 uppercase">Paid</p>
                       </div>
                     </div>
@@ -369,7 +369,7 @@ export default function Reports() {
             <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Daily Settlement</p>
                 <p className="text-3xl font-black text-slate-900 tracking-tighter mt-1">
-                    ₹{dailyInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0).toLocaleString()}
+                    ₹{Math.round(dailyInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0)).toLocaleString()}
                 </p>
             </div>
           </div>

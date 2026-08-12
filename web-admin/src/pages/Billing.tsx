@@ -139,7 +139,7 @@ export default function Billing() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-[15px] font-bold text-slate-900 tracking-tight">₹{parseFloat(inv.total_amount).toLocaleString()}</span>
+                        <span className="text-[15px] font-bold text-slate-900 tracking-tight">₹{Math.round(parseFloat(inv.total_amount)).toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">

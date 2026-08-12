@@ -74,8 +74,8 @@ export const printDirectly = (data: PrintData) => {
           .big { font-size: 24px; font-weight: 900; letter-spacing: 1px; }
           .header-address { font-size: 14px; font-weight: 900; line-height: 1.3; }
           .meta-table td { padding: 1px 0; vertical-align: top; font-size: 13px; white-space: nowrap; overflow: visible; }
-          .items-table th { padding: 4px 0; border-bottom: 1px dashed #000; font-weight: 800; }
-          .items-table td { padding: 4px 0; vertical-align: top; white-space: normal; word-break: break-word; }
+          .items-table th { padding: 2px 0; border-bottom: 1px dashed #000; font-weight: 800; font-size: 12px; }
+          .items-table td { padding: 2px 0; vertical-align: top; white-space: normal; word-break: break-word; font-size: 12px; line-height: 1.1; }
         </style>
       </head>
       <body>
@@ -124,11 +124,11 @@ export const printDirectly = (data: PrintData) => {
         <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 8%; text-align: left;">No.</th>
-              <th style="width: 37%; text-align: left;">Item</th>
-              <th style="width: 12%; text-align: right; padding-right: 5px;">Qty</th>
-              <th style="width: 20%; text-align: right; padding-right: 5px;">Price</th>
-              <th style="width: 23%; text-align: right;">Amount</th>
+              <th style="width: 5%; text-align: left;">#</th>
+              <th style="width: 45%; text-align: left;">Item Name</th>
+              <th style="width: 10%; text-align: right; padding-right: 2px;">Qty</th>
+              <th style="width: 18%; text-align: right; padding-right: 2px;">Price</th>
+              <th style="width: 22%; text-align: right;">Amt</th>
             </tr>
           </thead>
           <tbody>
@@ -136,9 +136,9 @@ export const printDirectly = (data: PrintData) => {
               <tr>
                 <td style="text-align: left;">${index + 1}</td>
                 <td style="text-align: left; overflow: visible; white-space: normal; word-break: break-word;">${item.menu_item_name}</td>
-                <td style="text-align: right; font-weight: 800; padding-right: 5px;">${item.quantity}</td>
-                <td style="text-align: right; padding-right: 5px;">${parseFloat(item.price_at_order.toString()).toFixed(2)}</td>
-                <td style="text-align: right;">${parseFloat(item.subtotal.toString()).toFixed(2)}</td>
+                <td style="text-align: right; font-weight: 800; padding-right: 2px;">${item.quantity}</td>
+                <td style="text-align: right; font-weight: 800; padding-right: 2px;">${Math.round(parseFloat(item.price_at_order.toString()))}</td>
+                <td style="text-align: right; font-weight: 800;">${Math.round(parseFloat(item.subtotal.toString()))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -150,13 +150,13 @@ export const printDirectly = (data: PrintData) => {
           <tr>
             <td style="font-weight: 800; font-size: 14px; white-space: nowrap;">Total Qty: ${totalQty}</td>
             <td style="text-align: right; font-weight: 800;">Sub Total</td>
-            <td style="text-align: right; font-weight: 800; width: 70px;">${parseFloat(data.subtotal.toString()).toFixed(2)}</td>
+            <td style="text-align: right; font-weight: 800; width: 70px;">${Math.round(parseFloat(data.subtotal.toString()))}</td>
           </tr>
           ${parseFloat(data.discount_amount.toString()) > 0 ? `
           <tr>
             <td></td>
             <td style="text-align: right; font-weight: 800; color: #000;">Discount</td>
-            <td style="text-align: right; font-weight: 800;">-${parseFloat(data.discount_amount.toString()).toFixed(2)}</td>
+            <td style="text-align: right; font-weight: 800;">-${Math.round(parseFloat(data.discount_amount.toString()))}</td>
           </tr>
           ` : ''}
         </table>
@@ -166,7 +166,7 @@ export const printDirectly = (data: PrintData) => {
         <table style="table-layout: auto;">
           <tr style="font-weight: 800;">
             <td style="text-align: right; font-size: 16px; vertical-align: middle; padding-right: 10px;">Grand Total</td>
-            <td style="text-align: right; font-size: 22px; white-space: nowrap;">₹${parseFloat(data.total_amount.toString()).toFixed(2)}</td>
+            <td style="text-align: right; font-size: 22px; white-space: nowrap;">₹${Math.round(parseFloat(data.total_amount.toString()))}</td>
           </tr>
         </table>
 
