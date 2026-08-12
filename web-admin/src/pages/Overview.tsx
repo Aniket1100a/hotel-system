@@ -37,6 +37,122 @@ interface SectionGroup {
   [key: string]: Table[];
 }
 
+const OrderCard = ({ order, paymentMethods, setPaymentMethods, customerNames, setCustomerNames, discounts, setDiscounts, handleGenerateBill, handleCancelOrder, handleCancelItem, handleHandover, processingIds, user, canAccess }: any) => {
+  const isProcessing = processingIds.has(order.id);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm",
+            order.order_type === 'TAKEAWAY' ? "bg-slate-800 text-white" : "bg-primary-600 text-white"
+          )}>
+            {order.order_type === 'TAKEAWAY' ? <ShoppingBag className="w-5 h-5" /> : order.table_number}
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {order.order_type === 'TAKEAWAY' ? 'Takeaway' : `Table Order`}
+            </p>
+            <h4 className="font-bold text-slate-800 text-[13px]">Order #{order.id}</h4>
+          </div>
+        </div>
+        <button
+          onClick={() => handleCancelOrder(order.id)}
+          className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+          title="Cancel Bill"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="p-5 flex-grow space-y-3">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cust. Name</label>
+              <input
+                type="text"
+                placeholder="Optional"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[12px] font-medium outline-none focus:ring-2 focus:ring-primary-500/10 transition-all"
+                value={customerNames[order.id] || ''}
+                onChange={(e) => setCustomerNames({ ...customerNames, [order.id]: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 text-rose-500">Discount (₹)</label>
+              <input
+                type="number"
+                placeholder="0.00"
+                disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER'}
+                className="w-full bg-rose-50/50 border border-rose-100 rounded-lg px-3 py-1.5 text-[12px] font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                value={discounts[order.id] || ''}
+                onChange={(e) => setDiscounts({ ...discounts, [order.id]: e.target.value })}
+              />
+            </div>
+          </div>
+          {order.items.map((item: any) => (
+            <div key={item.id} className="flex items-center justify-between group/item">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 w-4">{item.quantity}x</span>
+                <span className="text-[13px] font-medium text-slate-700">{item.menu_item_name}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] font-semibold text-slate-500">₹{Math.round(parseFloat(item.subtotal)).toLocaleString()}</span>
+                <button
+                  onClick={() => handleCancelItem(item.id)}
+                  className="opacity-0 group-hover/item:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+      </div>
+
+      <div className="p-5 bg-slate-50/30 border-t border-slate-100 mt-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
+            <p className="text-xl font-bold text-slate-900 tracking-tight">₹{Math.round(parseFloat(order.total_amount)).toLocaleString()}</p>
+          </div>
+          <select
+            disabled={isProcessing}
+            value={paymentMethods[order.id] || 'CASH'}
+            onChange={(e) => setPaymentMethods({ ...paymentMethods, [order.id]: e.target.value })}
+            className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
+          >
+            <option value="CASH">CASH</option>
+            <option value="CARD">CARD</option>
+            <option value="UPI">ONLINE</option>
+          </select>
+        </div>
+        {order.order_type === 'TAKEAWAY' && order.status === 'BILLED' ? (
+          <button
+            onClick={() => handleHandover(order.id)}
+            className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold shadow-sm transition-all"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Mark as Handed Over
+          </button>
+        ) : canAccess('billing_settle') ? (
+          <button
+            disabled={isProcessing}
+            onClick={() => handleGenerateBill(order.id, false, order)}
+            className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 text-white py-2.5 rounded-lg text-sm font-bold shadow-sm transition-all"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+            {isProcessing ? 'Processing...' : 'Complete & Generate Bill'}
+          </button>
+        ) : (
+          <div className="text-center py-2 px-4 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Settle via Biller
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function Overview() {
   const { user, canAccess } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -222,122 +338,6 @@ export default function Overview() {
     { name: 'Net Revenue', value: `₹${stats.revenueToday.toLocaleString()}`, icon: ReceiptText, change: '+5%', trend: 'up', label: 'Today' },
   ];
 
-  const OrderCard = ({ order, paymentMethods, setPaymentMethods, customerNames, setCustomerNames, discounts, setDiscounts, handleGenerateBill, handleCancelOrder, handleCancelItem, handleHandover, processingIds }: any) => {
-    const isProcessing = processingIds.has(order.id);
-
-    return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm",
-              order.order_type === 'TAKEAWAY' ? "bg-slate-800 text-white" : "bg-primary-600 text-white"
-            )}>
-              {order.order_type === 'TAKEAWAY' ? <ShoppingBag className="w-5 h-5" /> : order.table_number}
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {order.order_type === 'TAKEAWAY' ? 'Takeaway' : `Table Order`}
-              </p>
-              <h4 className="font-bold text-slate-800 text-[13px]">Order #{order.id}</h4>
-            </div>
-          </div>
-          <button
-            onClick={() => handleCancelOrder(order.id)}
-            className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
-            title="Cancel Bill"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 flex-grow space-y-3">
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cust. Name</label>
-                <input
-                  type="text"
-                  placeholder="Optional"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[12px] font-medium outline-none focus:ring-2 focus:ring-primary-500/10 transition-all"
-                  value={customerNames[order.id] || ''}
-                  onChange={(e) => setCustomerNames({ ...customerNames, [order.id]: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 text-rose-500">Discount (₹)</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  disabled={user?.role !== 'ADMIN' && user?.role !== 'MANAGER'}
-                  className="w-full bg-rose-50/50 border border-rose-100 rounded-lg px-3 py-1.5 text-[12px] font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  value={discounts[order.id] || ''}
-                  onChange={(e) => setDiscounts({ ...discounts, [order.id]: e.target.value })}
-                />
-              </div>
-            </div>
-            {order.items.map((item: any) => (
-              <div key={item.id} className="flex items-center justify-between group/item">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400 w-4">{item.quantity}x</span>
-                  <span className="text-[13px] font-medium text-slate-700">{item.menu_item_name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[12px] font-semibold text-slate-500">₹{Math.round(parseFloat(item.subtotal)).toLocaleString()}</span>
-                  <button
-                    onClick={() => handleCancelItem(item.id)}
-                    className="opacity-0 group-hover/item:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-        </div>
-
-        <div className="p-5 bg-slate-50/30 border-t border-slate-100 mt-auto">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
-              <p className="text-xl font-bold text-slate-900 tracking-tight">₹{Math.round(parseFloat(order.total_amount)).toLocaleString()}</p>
-            </div>
-            <select
-              disabled={isProcessing}
-              value={paymentMethods[order.id] || 'CASH'}
-              onChange={(e) => setPaymentMethods({ ...paymentMethods, [order.id]: e.target.value })}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm"
-            >
-              <option value="CASH">CASH</option>
-              <option value="CARD">CARD</option>
-              <option value="UPI">ONLINE</option>
-            </select>
-          </div>
-          {order.order_type === 'TAKEAWAY' && order.status === 'BILLED' ? (
-            <button
-              onClick={() => handleHandover(order.id)}
-              className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold shadow-sm transition-all"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Mark as Handed Over
-            </button>
-          ) : canAccess('billing_settle') ? (
-            <button
-              disabled={isProcessing}
-              onClick={() => handleGenerateBill(order.id, false, order)}
-              className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 text-white py-2.5 rounded-lg text-sm font-bold shadow-sm transition-all"
-            >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-              {isProcessing ? 'Processing...' : 'Complete & Generate Bill'}
-            </button>
-          ) : (
-            <div className="text-center py-2 px-4 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Settle via Biller
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-8">
       {/* Floating Quick Action (Mobile/Scroll) */}
@@ -485,6 +485,8 @@ export default function Overview() {
                   handleCancelItem={handleCancelItem}
                   handleHandover={handleHandover}
                   processingIds={processingIds}
+                  user={user}
+                  canAccess={canAccess}
                 />
               ))}
             </div>
@@ -526,6 +528,8 @@ export default function Overview() {
                     handleCancelItem={handleCancelItem}
                     handleHandover={handleHandover}
                     processingIds={processingIds}
+                    user={user}
+                    canAccess={canAccess}
                   />
                 ))}
               </div>
