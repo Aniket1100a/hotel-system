@@ -56,10 +56,17 @@ export default function Billing() {
     }
   };
 
-  const filteredInvoices = invoices.filter(inv =>
-    inv.id.toString().includes(searchQuery) ||
-    (inv.table_number && inv.table_number.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredInvoices = invoices.filter(inv => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    return (
+      inv.id.toString().includes(q) ||
+      (inv.bill_no && inv.bill_no.toLowerCase().includes(q)) ||
+      (inv.customer_name && inv.customer_name.toLowerCase().includes(q)) ||
+      (inv.table_number && inv.table_number.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="space-y-8">
@@ -79,7 +86,7 @@ export default function Billing() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by Invoice ID or Table Number..."
+            placeholder="Search by Bill No, Customer or Table..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

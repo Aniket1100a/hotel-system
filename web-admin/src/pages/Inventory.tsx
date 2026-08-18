@@ -102,16 +102,17 @@ export default function Inventory() {
         data.append('attachment', billAttachment);
       }
 
-      await api.post(`/inventory/items/${selectedItem.id}/update_stock/`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Do NOT manually set Content-Type for FormData, axios/browser will handle boundary
+      await api.post(`/inventory/items/${selectedItem.id}/update_stock/`, data);
 
       setIsUpdateModalOpen(false);
       setUpdateForm({ quantity: '', change_type: 'USAGE', notes: '' });
       setBillAttachment(null);
       fetchData();
-    } catch (error) {
+      alert("Stock updated successfully!");
+    } catch (error: any) {
       console.error("Error updating stock:", error);
+      alert("Failed to update stock: " + (error.response?.data?.error || "Unknown error"));
     }
   };
 
