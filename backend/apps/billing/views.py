@@ -34,12 +34,20 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice.is_paid = True
         invoice.save()
 
-        # Free the table associated with the order
+        # Free the table associated with the order ONLY if no other active splits exist
         table = invoice.order.table
-        table.status = DiningTable.Status.FREE
-        table.save()
+        if table:
+            from apps.orders.models import Order
+            has_active = Order.objects.filter(
+                table=table,
+                status__in=['PENDING', 'PREPARING', 'SERVED']
+            ).exclude(id=invoice.order.id).exists()
 
-        return Response({'status': 'Invoice marked as paid and table freed'})
+            if not has_active:
+                table.status = DiningTable.Status.FREE
+                table.save()
+
+        return Response({'status': 'Invoice marked as paid and table state updated'})
 
     @action(detail=False, methods=['get'])
     def revenue_stats(self, request):
@@ -52,7 +60,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if request.user.role not in ['ADMIN', 'MANAGER']:
             return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-        today = timezone.now()
+        today = timezone.localtime(timezone.now())
         first_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         first_of_year = today.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 

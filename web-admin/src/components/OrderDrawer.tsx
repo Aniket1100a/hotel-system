@@ -130,8 +130,8 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
     }
   };
 
-  const cartTotal = Object.values(cart).reduce((sum, item: any) => sum + (item.price * item.quantity), 0);
-  const historyTotal = historyItems.reduce((sum, item: any) => sum + parseFloat(item.subtotal), 0);
+  const cartTotal = Object.values(cart).reduce<number>((sum, item: any) => sum + (item.price * item.quantity), 0);
+  const historyTotal = historyItems.reduce<number>((sum, item: any) => sum + parseFloat(item.subtotal), 0);
 
   const handlePlaceOrder = async () => {
     if (Object.keys(cart).length === 0) return;
@@ -467,7 +467,7 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
                 )}
               </div>
 
-              {activeTab === 'NEW' && (
+              {activeTab === 'NEW' ? (
                 <button
                   disabled={Object.keys(cart).length === 0 || placing}
                   onClick={handlePlaceOrder}
@@ -482,7 +482,17 @@ export default function OrderDrawer({ isOpen, onClose, tableId, tableName, onOrd
                       </>
                   )}
                 </button>
-              )}
+              ) : Object.keys(cart).length > 0 ? (
+                <div className="flex flex-col gap-2">
+                   <p className="text-[10px] text-primary-600 font-bold text-center uppercase tracking-widest animate-pulse">New items pending in selection tab</p>
+                   <button
+                    onClick={() => setActiveTab('NEW')}
+                    className="w-full bg-primary-50 text-primary-700 font-bold py-3 rounded-xl border border-primary-200 hover:bg-primary-100 transition-all text-xs"
+                   >
+                     Go to Selection to Dispatch
+                   </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

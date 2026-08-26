@@ -184,7 +184,10 @@ export default function Reports() {
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                             {data?.daily
-                                .filter(item => item.date.startsWith(new Date().toISOString().substring(0, 7)))
+                                .filter(item => {
+                                    const currentMonth = new Date().toLocaleDateString('en-CA').substring(0, 7);
+                                    return item.date.startsWith(currentMonth);
+                                })
                                 .map((item, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-6 py-5 whitespace-nowrap">

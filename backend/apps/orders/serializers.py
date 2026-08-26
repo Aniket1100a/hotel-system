@@ -33,13 +33,18 @@ class OrderSerializer(serializers.ModelSerializer):
         return f"{obj.table.number}{obj.sub_table}"
 
     def _deduct_inventory(self, menu_item, quantity, user, order):
+        from django.db.models import F
         linked_item = menu_item.linked_inventory_item
         if not linked_item:
             return
 
         deduction = menu_item.inventory_deduction_quantity * quantity
-        linked_item.current_stock = max(linked_item.current_stock - deduction, 0)
+        # Atomic update to prevent race conditions
+        linked_item.current_stock = F('current_stock') - deduction
         linked_item.save(update_fields=['current_stock'])
+
+        # Refresh from DB to get the calculated value for logging (optional, but good for accuracy)
+        linked_item.refresh_from_db()
 
         from apps.inventory.models import StockLog
         StockLog.objects.create(
