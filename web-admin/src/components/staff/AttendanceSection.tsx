@@ -1,33 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/api/axios';
-import { CheckCircle2, XCircle, Clock, Calendar, Loader2, Save, Paperclip, Image as ImageIcon, Search, ChevronRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Calendar, Loader2, Save, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AttendanceSection() {
   const [staff, setStaff] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setActiveView] = useState<'daily' | 'summary'>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
   const [saving, setSaving] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      if (viewMode === 'daily') {
-        const [staffRes, attRes] = await Promise.all([
-          api.get('/auth/users/'),
-          api.get(`/staff/attendance/?date=${selectedDate}`)
-        ]);
-        setStaff(staffRes.data);
-        setAttendance(attRes.data);
-      } else {
-        const res = await api.get(`/staff/attendance/summary/?month=${selectedMonth}`);
-        setSummary(res.data);
-      }
+      const [staffRes, attRes] = await Promise.all([
+        api.get('/auth/users/'),
+        api.get(`/staff/attendance/?date=${selectedDate}`)
+      ]);
+      setStaff(staffRes.data);
+      setAttendance(attRes.data);
     } catch (err) {
       console.error("Error fetching attendance:", err);
     } finally {
@@ -37,7 +28,7 @@ export default function AttendanceSection() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedDate, selectedMonth, viewMode]);
+  }, [selectedDate]);
 
   const toggleAttendance = async (userId: number, currentStatus: string, file?: File) => {
     const nextStatus = currentStatus === 'PRESENT' ? 'ABSENT' : 'PRESENT';
@@ -48,12 +39,6 @@ export default function AttendanceSection() {
       const data = new FormData();
       data.append('status', nextStatus);
       if (file) data.append('attachment', file);
-
-      if (nextStatus === 'PRESENT') {
-          // Default to 10 AM to 10 PM
-          data.append('check_in', '10:00:00');
-          data.append('check_out', '22:00:00');
-      }
 
       if (record) {
         await api.patch(`/staff/attendance/${record.id}/`, data, {
@@ -72,19 +57,6 @@ export default function AttendanceSection() {
     } finally {
       setSaving(null);
     }
-  };
-
-  const markAllPresent = async () => {
-      if (!window.confirm("Mark all staff as present with default 12-hour shift (10AM - 10PM)?")) return;
-      setLoading(true);
-      try {
-          await api.post('/staff/attendance/bulk_mark_present/');
-          fetchData();
-      } catch (err) {
-          console.error("Error bulk marking present:", err);
-      } finally {
-          setLoading(false);
-      }
   };
 
   const uploadProof = async (userId: number, file: File) => {
@@ -115,7 +87,11 @@ export default function AttendanceSection() {
 
   const updateTime = async (userId: number, field: 'check_in' | 'check_out', value: string) => {
     const record = attendance.find(a => a.user === userId);
-    if (!record) return;
+    if (!record) {
+        alert("Mark presence first!");
+        return;
+    }
+
     try {
         await api.patch(`/staff/attendance/${record.id}/`, { [field]: value });
         fetchData();
@@ -124,198 +100,120 @@ export default function AttendanceSection() {
     }
   };
 
-  const filteredStaff = staff.filter(member =>
-    `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
-      {/* Date, Toggle and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex p-1 bg-white rounded-xl border border-slate-200">
-             <button
-              onClick={() => setActiveView('daily')}
-              className={cn(
-                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
-                viewMode === 'daily' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
-              )}
-             >
-               Daily Log
-             </button>
-             <button
-              onClick={() => setActiveView('summary')}
-              className={cn(
-                "px-4 py-1.5 text-[11px] font-bold rounded-lg transition-all",
-                viewMode === 'summary' ? "bg-primary-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
-              )}
-             >
-               Monthly Summary
-             </button>
-          </div>
-
-          {viewMode === 'daily' ? (
-            <>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-              />
-              <button
-                onClick={markAllPresent}
-                className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-[11px] font-bold shadow-sm hover:bg-emerald-700 transition-all active:scale-95"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Mark All Present
-              </button>
-            </>
-          ) : (
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-            />
-          )}
-        </div>
-
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-3">
+          <Calendar className="w-5 h-5 text-indigo-500" />
+          <span className="font-bold text-slate-700">Attendance for Date:</span>
           <input
-            type="text"
-            placeholder="Search employees..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 shadow-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 font-bold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
           />
+        </div>
+        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            {staff.length} Employees Total
         </div>
       </div>
 
-      {/* Content Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-3" />
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Loading Records...</p>
-          </div>
-        ) : viewMode === 'daily' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attendance Status</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Duty Schedule</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Overtime</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Verification</th>
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" /></div>
+        ) : (
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-slate-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Staff Member</th>
+                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Check In</th>
+                  <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Check Out</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filteredStaff.map(member => {
+                {staff.map(member => {
                   const record = attendance.find(a => a.user === member.id);
                   const isPresent = record?.status === 'PRESENT';
 
                   return (
                     <tr key={member.id} className="hover:bg-slate-50/30 transition-colors">
-                      <td className="px-6 py-5">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-[13px] font-bold text-slate-500 border border-slate-200">
-                            {member.username.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-[14px] font-bold text-slate-800 leading-tight">{member.first_name} {member.last_name}</p>
-                            <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">{member.role}</p>
-                          </div>
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
+                                {member.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">{member.first_name} {member.last_name}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">{member.role}</p>
+                            </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-center">
-                        <button
-                          onClick={() => toggleAttendance(member.id, record?.status || 'ABSENT')}
-                          disabled={saving === member.id}
-                          className={cn(
-                            "inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold tracking-tight transition-all border shadow-sm",
-                            isPresent
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
-                          )}
-                        >
-                          {saving === member.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : (isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />)}
-                          {isPresent ? 'PRESENT' : 'ABSENT'}
-                        </button>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-4">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[9px] font-bold text-slate-300 uppercase mb-1">In</span>
-                            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <input
-                                type="time"
-                                disabled={!isPresent}
-                                value={record?.check_in || ''}
-                                onChange={(e) => updateTime(member.id, 'check_in', e.target.value)}
-                                className="bg-transparent border-none text-[12px] font-bold text-slate-600 outline-none disabled:opacity-30 w-16"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-[9px] font-bold text-slate-300 uppercase mb-1">Out</span>
-                            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <input
-                                type="time"
-                                disabled={!isPresent}
-                                value={record?.check_out || ''}
-                                onChange={(e) => updateTime(member.id, 'check_out', e.target.value)}
-                                className="bg-transparent border-none text-[12px] font-bold text-slate-600 outline-none disabled:opacity-30 w-16"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                         {record?.overtime_hours > 0 ? (
-                           <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-[12px] font-black border border-indigo-100">
-                             +{record.overtime_hours}h
-                           </span>
-                         ) : (
-                           <span className="text-slate-300 text-[11px] font-medium">-</span>
-                         )}
-                      </td>
-                      <td className="px-6 py-5">
+                      <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <div className="relative">
-                            <label className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-dashed cursor-pointer transition-all",
-                                record?.attachment
-                                  ? "bg-primary-50 border-primary-300 text-primary-700 shadow-sm"
-                                  : "border-slate-200 text-slate-400 hover:border-primary-300 hover:bg-primary-50/30"
-                            )}>
-                                <Paperclip className="w-3.5 h-3.5" />
-                                <span className="text-[11px] font-bold uppercase">{record?.attachment ? 'Attached' : 'Add Proof'}</span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) uploadProof(member.id, file);
-                                    }}
-                                />
-                            </label>
-                            {record?.attachment && (
-                                <a
-                                    href={record.attachment}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="absolute -top-2 -right-2 bg-white shadow-md border border-slate-100 rounded-full p-1 text-primary-600 hover:scale-110 transition-transform"
-                                    title="View Proof"
-                                >
-                                    <ImageIcon className="w-3.5 h-3.5" />
-                                </a>
+                            <button
+                            onClick={() => toggleAttendance(member.id, record?.status || 'ABSENT')}
+                            disabled={saving === member.id}
+                            className={cn(
+                                "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95",
+                                isPresent ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"
                             )}
-                          </div>
+                            >
+                            {saving === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : (isPresent ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />)}
+                            {isPresent ? 'PRESENT' : 'ABSENT'}
+                            </button>
+
+                            <div className="relative group/upload">
+                                <label className={cn(
+                                    "p-2 rounded-lg border-2 border-dashed cursor-pointer flex items-center justify-center transition-all",
+                                    record?.attachment ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "border-slate-100 text-slate-300 hover:border-slate-200"
+                                )}>
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) uploadProof(member.id, file);
+                                        }}
+                                    />
+                                </label>
+                                {record?.attachment && (
+                                    <a
+                                        href={record.attachment}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="absolute -top-1 -right-1 bg-white shadow-md rounded-full p-0.5 text-indigo-600 hover:scale-110 transition-transform"
+                                    >
+                                        <ImageIcon className="w-3 h-3" />
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                           <Clock className="w-3 h-3 text-slate-300" />
+                           <input
+                             type="time"
+                             disabled={!isPresent}
+                             value={record?.check_in || ''}
+                             onChange={(e) => updateTime(member.id, 'check_in', e.target.value)}
+                             className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none disabled:opacity-30"
+                           />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                           <Clock className="w-3 h-3 text-slate-300" />
+                           <input
+                             type="time"
+                             disabled={!isPresent}
+                             value={record?.check_out || ''}
+                             onChange={(e) => updateTime(member.id, 'check_out', e.target.value)}
+                             className="bg-transparent border-none text-xs font-bold text-slate-600 outline-none disabled:opacity-30"
+                           />
                         </div>
                       </td>
                     </tr>
@@ -323,46 +221,6 @@ export default function AttendanceSection() {
                 })}
               </tbody>
             </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Employee</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Days Present</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Work Hours</th>
-                  <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">Accumulated Overtime</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {summary.map(item => (
-                  <tr key={item.user} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-6 py-5">
-                       <div>
-                          <p className="text-[14px] font-bold text-slate-800">{item.user__first_name} {item.user__last_name}</p>
-                          <p className="text-[11px] text-slate-400 font-medium italic">@{item.user__username}</p>
-                       </div>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                       <span className="text-[14px] font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">{item.days_present} Days</span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                       <span className="text-[14px] font-bold text-primary-700">{item.total_hours} hrs</span>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                       <span className="text-[14px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">+{item.total_overtime}h</span>
-                    </td>
-                  </tr>
-                ))}
-                {summary.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-slate-400 italic">No data found for this month.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         )}
       </div>
     </div>

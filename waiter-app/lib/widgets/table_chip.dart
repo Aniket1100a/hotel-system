@@ -27,53 +27,32 @@ class TableChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOccupied = table.status == 'OCCUPIED';
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 60,
-        height: 50,
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary
-              : (isOccupied ? AppColors.warningSoft : AppColors.surface),
+          color: selected ? AppColors.textPrimary : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? AppColors.primary
-                : (isOccupied ? AppColors.warning.withOpacity(0.3) : AppColors.border),
-            width: 1.2,
-          ),
-          boxShadow: selected ? [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.2),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            )
-          ] : null,
+          border: Border.all(color: selected ? AppColors.textPrimary : AppColors.border),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${table.number}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: selected ? Colors.white : AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
             Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: selected ? Colors.white.withOpacity(0.5) : _statusColor,
-                shape: BoxShape.circle,
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: _statusColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Table ${table.number}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : AppColors.textPrimary,
               ),
             ),
           ],

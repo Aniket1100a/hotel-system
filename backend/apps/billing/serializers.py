@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Invoice
-from apps.orders.models import Order
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -10,64 +9,30 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Invoice
-        fields = ['id', 'bill_no', 'customer_name', 'order', 'table_number', 'billed_by', 'billed_by_name', 'waiter_name', 'subtotal',
+        fields = ['id', 'order', 'table_number', 'billed_by', 'billed_by_name', 'waiter_name', 'subtotal',
                   'tax_percent', 'tax_amount', 'discount_amount', 'total_amount',
-                  'payment_method', 'is_paid', 'created_at', 'receipt_copy']
-        read_only_fields = ['bill_no', 'billed_by', 'subtotal', 'tax_amount', 'total_amount']
+                  'payment_method', 'is_paid', 'created_at']
+        read_only_fields = ['billed_by', 'subtotal', 'tax_amount', 'total_amount']
 
-    def _generate_digital_receipt(self, invoice):
-        """Generates a text-based digital copy for local storage container."""
-        order = invoice.order
-        items = order.items.all()
+    def validate(self, attrs):
+        from decimal import Decimal
+        order = attrs.get('order')
+        if not self.instance and order:
+            if Invoice.objects.filter(order=order).exists():
+                raise serializers.ValidationError({"order": "An invoice has already been generated for this order."})
 
-        lines = []
-        lines.append("="*30)
-        lines.append("   HOTEL CHATURTHI")
-        lines.append(" Solapur - Dhule highway")
-        lines.append(f" Date: {invoice.created_at.strftime('%d/%m/%Y %H:%M')}")
-        lines.append(f" Bill No: {invoice.bill_no}")
-        lines.append(f" Table: {order.table.number if order.table else 'TA'}")
-        lines.append("-" * 30)
+        subtotal = Decimal(str(order.total_amount)) if order else Decimal('0')
+        tax_percent = Decimal(str(attrs.get('tax_percent', '0.00')))
+        discount = Decimal(str(attrs.get('discount_amount', '0')))
+        tax_amount = (subtotal * tax_percent) / Decimal('100')
 
-        for item in items:
-            name = item.menu_item.name[:20]
-            lines.append(f"{name:<20} {item.quantity} x {item.price_at_order}")
+        if discount > (subtotal + tax_amount):
+            raise serializers.ValidationError({"discount_amount": "Discount amount cannot exceed bill total."})
 
-        lines.append("-" * 30)
-        lines.append(f"SubTotal:  ₹{invoice.subtotal}")
-        lines.append(f"Discount:  -₹{invoice.discount_amount}")
-        lines.append(f"GRAND TOTAL: ₹{invoice.total_amount}")
-        lines.append("="*30)
-        lines.append(" Thanks & Visit Again!")
-
-        return "\n".join(lines)
+        return attrs
 
     def create(self, validated_data):
         from decimal import Decimal
-        from django.utils import timezone
-
-        now = timezone.now()
-        date_str = now.strftime("%y%m%d")
-
-        # Robust bill number generation:
-        # Find the max sequence number for today and increment it
-        last_bill = Invoice.objects.filter(bill_no__startswith=date_str).order_by('id').last()
-        if last_bill and last_bill.bill_no:
-            try:
-                last_seq = int(last_bill.bill_no.split()[-1])
-                next_seq = last_seq + 1
-            except (ValueError, IndexError):
-                next_seq = Invoice.objects.filter(created_at__date=now.date()).count() + 1
-        else:
-            next_seq = 1
-
-        bill_no = f"{date_str} {next_seq}"
-
-        # Double check uniqueness loop
-        while Invoice.objects.filter(bill_no=bill_no).exists():
-            next_seq += 1
-            bill_no = f"{date_str} {next_seq}"
-
         order = validated_data['order']
         subtotal = Decimal(str(order.total_amount))
         tax_percent = Decimal(str(validated_data.get('tax_percent', '0.00')))
@@ -78,8 +43,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         request = self.context['request']
         invoice = Invoice.objects.create(
-            bill_no=bill_no,
-            customer_name=validated_data.get('customer_name', ''),
             order=order,
             billed_by=request.user,
             subtotal=subtotal,
@@ -91,24 +54,32 @@ class InvoiceSerializer(serializers.ModelSerializer):
             is_paid=True,  # Set to PAID immediately
         )
 
-        # Generate and save digital copy
-        invoice.receipt_copy = self._generate_digital_receipt(invoice)
-        invoice.save(update_fields=['receipt_copy'])
+        # --- AUTO-DEDUCT INVENTORY ---
+        from apps.inventory.models import InventoryItem, StockLog
+        for item in order.items.all():
+            linked_item = item.menu_item.linked_inventory_item
+            if linked_item:
+                deduction = item.menu_item.inventory_deduction_quantity * item.quantity
+                linked_item.current_stock -= deduction
+                linked_item.save()
+
+                # Log the deduction
+                StockLog.objects.create(
+                    item=linked_item,
+                    quantity=-deduction,
+                    change_type='USAGE',
+                    user=request.user,
+                    notes=f"Auto-deducted for Order #{order.id}"
+                )
 
         # Update order status
         order.status = order.Status.BILLED
         order.save(update_fields=['status'])
 
-        # Free the table only if no other active splits exist
+        # Free the table immediately (only if it's a Dine-in order)
         if order.table:
             table = order.table
-            has_active_splits = Order.objects.filter(
-                table=table,
-                status__in=['PENDING', 'PREPARING', 'SERVED']
-            ).exclude(id=order.id).exists()
-
-            if not has_active_splits:
-                table.status = 'FREE'
-                table.save(update_fields=['status'])
+            table.status = 'FREE'
+            table.save(update_fields=['status'])
 
         return invoice

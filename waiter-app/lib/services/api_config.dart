@@ -4,13 +4,8 @@
 /// as the Django server, so `localhost` will NOT work here — it must be
 /// the server PC's local network IP (e.g. 192.168.1.5).
 ///
-/// Provide a build-time define such as `--dart-define=API_BASE_URL=http://192.168.1.5:8000/api`
-/// to override the default value.
+/// Find it by running `ipconfig` (Windows) or `ifconfig` / `ip addr`
+/// (Mac/Linux) on the machine running the Django server.
 class ApiConfig {
-  static const String _defaultBaseUrl = 'http://100.74.68.125:8000/api';
-
-  static String get baseUrl {
-    const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-    return override.isNotEmpty ? override : _defaultBaseUrl;
-  }
+  static const String baseUrl = 'http://10.76.72.182:8000/api';
 }

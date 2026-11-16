@@ -19,18 +19,25 @@ def seed():
     ]
 
     for username, password, role, first, last in users:
-        if not User.objects.filter(username=username).exists():
-            if role == User.Role.ADMIN:
-                User.objects.create_superuser(
-                    username=username, password=password, role=role,
-                    first_name=first, last_name=last
-                )
-            else:
-                User.objects.create_user(
-                    username=username, password=password, role=role,
-                    first_name=first, last_name=last
-                )
-            print(f"Created {role}: {username} / {password}")
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={
+                'role': role,
+                'first_name': first,
+                'last_name': last,
+                'is_staff': True if role in [User.Role.ADMIN, User.Role.MANAGER] else False,
+                'is_superuser': True if role == User.Role.ADMIN else False,
+            }
+        )
+        user.set_password(password)
+        user.role = role
+        user.first_name = first
+        user.last_name = last
+        if role == User.Role.ADMIN:
+            user.is_staff = True
+            user.is_superuser = True
+        user.save()
+        print(f"Ensured user {username} ({role}) with password set.")
 
     # Create Sections
     hall, _ = TableSection.objects.get_or_create(name='Main Hall', defaults={'display_order': 1})

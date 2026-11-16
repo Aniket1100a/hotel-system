@@ -14,12 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='dev-insecure-secret-key-change-me')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-# ALLOWED_HOSTS: We allow all hosts in DEBUG mode to make local WiFi usage easier.
-# In production, this should be tightened.
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
-else:
-    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
+# Add your PC's local WiFi IP here (e.g. 192.168.1.5) so phones/tablets on
+# the same WiFi can reach the server. '0.0.0.0' style wildcards don't work
+# here — list actual hosts.
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
 # Application definition
 INSTALLED_APPS = [
@@ -43,7 +41,6 @@ INSTALLED_APPS = [
     'apps.billing',
     'apps.inventory',
     'apps.staff',
-    'apps.core',
 ]
 
 MIDDLEWARE = [
@@ -83,6 +80,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,
+        },
     }
 }
 
@@ -124,10 +124,9 @@ SIMPLE_JWT = {
 }
 
 # --- CORS ---
-# In DEBUG mode, we allow all origins to ensure the React app and Flutter app can connect
-# regardless of what IP the server or client is currently on.
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:5173,http://127.0.0.1:5173', cast=Csv())
-    CORS_ALLOW_ALL_ORIGINS = False
+# Waiter app (Flutter) talks directly to the API, so CORS mainly matters
+# for the React web-admin dev server.
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:5173,http://127.0.0.1:5173', cast=Csv())
+# While setting things up on a new hotel WiFi it's easiest to allow all —
+# tighten this once you know your local IP range.
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=True, cast=bool)

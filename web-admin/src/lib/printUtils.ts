@@ -1,6 +1,6 @@
 /**
- * Utility to handle direct thermal printing by generating a temporary window.
- * Centered layout for 75mm thermal paper.
+ * Utility to handle direct thermal printing by generating a temporary window
+ * Matches the layout of the provided reference image precisely.
  */
 
 export interface PrintItem {
@@ -12,8 +12,6 @@ export interface PrintItem {
 
 export interface PrintData {
   id: number;
-  bill_no?: string;
-  customer_name?: string;
   table_number: string;
   billed_by_name: string;
   subtotal: string | number;
@@ -47,40 +45,36 @@ export const printDirectly = (data: PrintData) => {
   const html = `
     <html>
       <head>
-        <title>Print Bill ${data.bill_no || `#${data.id}`}</title>
+        <title>Print Bill #${data.id}</title>
         <style>
-          @page { size: 75mm auto; margin: 0; }
-          html, body { margin: 0; padding: 0; }
+          @page { margin: 0; }
           body {
-            width: 75mm;
-            margin: 0 auto;
-            padding: 2mm 4mm;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
+            width: 80mm;
+            margin: 0;
+            padding: 2mm 1mm;
+            font-size: 14px;
             line-height: 1.2;
             color: #000;
-            font-weight: 550; /* Body Weight */
-            box-sizing: border-box;
-            overflow-x: hidden;
           }
           .center { text-align: center; }
-          .bold { font-weight: 800; } /* Bold Weight */
+          .bold { font-weight: bold; }
           .divider { border-top: 1px dashed #000; margin: 4px 0; }
           .divider-solid { border-top: 1px solid #000; margin: 4px 0; }
           table { width: 100%; border-collapse: collapse; margin: 2px 0; table-layout: fixed; }
-          td, th { overflow: hidden; }
+          td, th { overflow: hidden; white-space: nowrap; }
           .text-right { text-align: right; }
-          .footer { margin-top: 15px; font-size: 13px; }
-          .big { font-size: 24px; font-weight: 900; letter-spacing: 1px; }
-          .header-address { font-size: 14px; font-weight: 900; line-height: 1.3; }
-          .meta-table td { padding: 1px 0; vertical-align: top; font-size: 13px; white-space: nowrap; overflow: visible; }
-          .items-table th { padding: 2px 0; border-bottom: 1px dashed #000; font-weight: 800; font-size: 12px; }
-          .items-table td { padding: 2px 0; vertical-align: top; white-space: normal; word-break: break-word; font-size: 12px; line-height: 1.1; }
+          .footer { margin-top: 15px; font-size: 14px; }
+          .big { font-size: 18px; }
+          .header-address { font-size: 13px; font-weight: bold; line-height: 1.2; }
+          .meta-table td { padding: 1px 0; vertical-align: top; font-size: 14px; }
+          .items-table th { padding: 4px 0; border-bottom: 1px dashed #000; font-weight: bold; }
+          .items-table td { padding: 4px 0; vertical-align: top; }
         </style>
       </head>
       <body>
         <div class="center">
-          <p class="big" style="margin: 0 0 4px 0;">HOTEL CHATURTHI</p>
+          <p class="bold big" style="margin: 0 0 4px 0;">HOTEL CHATURTHI</p>
           <p class="header-address" style="margin: 0;">Solapur - Dhule highway</p>
           <p class="header-address" style="margin: 0;">Ghatpimpri Phata</p>
           <p class="header-address" style="margin: 0;">Mob No : 9850066337</p>
@@ -90,17 +84,14 @@ export const printDirectly = (data: PrintData) => {
 
         <table class="meta-table">
           <tr>
-            <td style="width: 40%;">Date: ${formattedDate}</td>
-            <td style="width: 60%; font-weight: 800; text-align: right;">
+            <td style="width: 50%;">Date: ${formattedDate}</td>
+            <td style="width: 50%; font-weight: bold; text-align: right;">
               ${data.order_type === 'TAKEAWAY' ? 'TAKEAWAY' : `Dine In: ${data.table_number}`}
             </td>
           </tr>
           <tr>
-            <td style="vertical-align: top;">${formattedTime}</td>
-            <td style="text-align: right; white-space: normal; word-break: break-all;">
-              <span style="font-size: 13px;">Bill No:</span>
-              <span style="font-size: 14px; font-weight: 800;">${data.bill_no || data.id}</span>
-            </td>
+            <td>${formattedTime}</td>
+            <td style="text-align: right;">Bill No.: ${data.id}</td>
           </tr>
           <tr>
             <td>Cashier: ${data.billed_by_name}</td>
@@ -112,11 +103,6 @@ export const printDirectly = (data: PrintData) => {
               <td></td>
             </tr>
           ` : ''}
-          ${data.customer_name ? `
-            <tr>
-              <td colspan="2" style="font-weight: 800;">Cust. Name: ${data.customer_name}</td>
-            </tr>
-          ` : ''}
         </table>
 
         <div class="divider"></div>
@@ -124,11 +110,11 @@ export const printDirectly = (data: PrintData) => {
         <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 5%; text-align: left;">#</th>
-              <th style="width: 45%; text-align: left;">Item Name</th>
-              <th style="width: 10%; text-align: right; padding-right: 2px;">Qty</th>
-              <th style="width: 18%; text-align: right; padding-right: 2px;">Price</th>
-              <th style="width: 22%; text-align: right;">Amt</th>
+              <th style="width: 8%; text-align: left;">No.</th>
+              <th style="width: 37%; text-align: left;">Item</th>
+              <th style="width: 12%; text-align: right; padding-right: 5px;">Qty</th>
+              <th style="width: 20%; text-align: right; padding-right: 5px;">Price</th>
+              <th style="width: 23%; text-align: right;">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -136,9 +122,9 @@ export const printDirectly = (data: PrintData) => {
               <tr>
                 <td style="text-align: left;">${index + 1}</td>
                 <td style="text-align: left; overflow: visible; white-space: normal; word-break: break-word;">${item.menu_item_name}</td>
-                <td style="text-align: right; font-weight: 800; padding-right: 2px;">${item.quantity}</td>
-                <td style="text-align: right; font-weight: 800; padding-right: 2px;">${Math.round(parseFloat(item.price_at_order.toString()))}</td>
-                <td style="text-align: right; font-weight: 800;">${Math.round(parseFloat(item.subtotal.toString()))}</td>
+                <td style="text-align: right; font-weight: bold; padding-right: 5px;">${item.quantity}</td>
+                <td style="text-align: right; padding-right: 5px;">${parseFloat(item.price_at_order.toString()).toFixed(2)}</td>
+                <td style="text-align: right;">${parseFloat(item.subtotal.toString()).toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -146,33 +132,26 @@ export const printDirectly = (data: PrintData) => {
 
         <div class="divider"></div>
 
-        <table style="margin-bottom: 4px; table-layout: auto;">
+        <table style="margin-bottom: 4px;">
           <tr>
-            <td style="font-weight: 800; font-size: 14px; white-space: nowrap;">Total Qty: ${totalQty}</td>
-            <td style="text-align: right; font-weight: 800;">Sub Total</td>
-            <td style="text-align: right; font-weight: 800; width: 70px;">${Math.round(parseFloat(data.subtotal.toString()))}</td>
+            <td style="width: 40%; font-weight: bold;">Total Qty: ${totalQty}</td>
+            <td style="width: 30%; text-align: right; font-weight: bold;">Sub Total</td>
+            <td style="width: 30%; text-align: right; font-weight: bold;">${parseFloat(data.subtotal.toString()).toFixed(2)}</td>
           </tr>
-          ${parseFloat(data.discount_amount.toString()) > 0 ? `
-          <tr>
-            <td></td>
-            <td style="text-align: right; font-weight: 800; color: #000;">Discount</td>
-            <td style="text-align: right; font-weight: 800;">-${Math.round(parseFloat(data.discount_amount.toString()))}</td>
-          </tr>
-          ` : ''}
         </table>
 
-        <div class="divider-solid"></div>
+        <div class="divider-solid" style="border-top-width: 2px;"></div>
 
-        <table style="table-layout: auto;">
-          <tr style="font-weight: 800;">
-            <td style="text-align: right; font-size: 16px; vertical-align: middle; padding-right: 10px;">Grand Total</td>
-            <td style="text-align: right; font-size: 22px; white-space: nowrap;">₹${Math.round(parseFloat(data.total_amount.toString()))}</td>
+        <table>
+          <tr style="font-weight: bold; font-size: 16px;">
+            <td style="width: 60%; text-align: right;">Grand Total</td>
+            <td style="width: 40%; text-align: right;">₹ ${parseFloat(data.total_amount.toString()).toFixed(2)}</td>
           </tr>
         </table>
 
         <table style="margin-top: 4px;">
           <tr>
-            <td style="font-size: 12px; font-weight: 800;">Payment Mode: ${data.payment_method || 'CASH'}</td>
+            <td style="font-size: 12px; font-weight: bold;">Payment Mode: ${data.payment_method || 'CASH'}</td>
           </tr>
         </table>
 

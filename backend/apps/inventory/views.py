@@ -14,38 +14,29 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def update_stock(self, request, pk=None):
         item = self.get_object()
+        quantity = request.data.get('quantity')
+        change_type = request.data.get('change_type')
+        notes = request.data.get('notes', '')
 
-        # In multipart requests, data might be in lists
-        def get_single(key, default=''):
-            val = request.data.get(key, default)
-            return val[0] if isinstance(val, list) else val
-
-        quantity = get_single('quantity', None)
-        change_type = get_single('change_type', None)
-        notes = get_single('notes', '')
-        attachment = request.FILES.get('attachment')
-
-        if quantity is None or not change_type:
+        if not quantity or not change_type:
             return Response({'error': 'Quantity and change_type are required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            from decimal import Decimal
-            qty_decimal = Decimal(str(quantity))
-        except (ValueError, TypeError, Decimal.InvalidOperation):
-            return Response({'error': f'Invalid quantity: {quantity}'}, status=status.HTTP_400_BAD_REQUEST)
+            qty_decimal = float(quantity)
+        except ValueError:
+            return Response({'error': 'Invalid quantity'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update current stock
         item.current_stock += qty_decimal
-        item.save(update_fields=['current_stock'])
+        item.save()
 
-        # Create log with attachment support
+        # Create log
         StockLog.objects.create(
             item=item,
             quantity=qty_decimal,
             change_type=change_type,
             user=request.user,
-            notes=notes,
-            attachment=attachment
+            notes=notes
         )
 
         return Response(InventoryItemSerializer(item).data)

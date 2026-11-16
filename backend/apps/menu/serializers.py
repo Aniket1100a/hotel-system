@@ -9,8 +9,13 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    items = MenuItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'display_order', 'items']
+
+    def get_items(self, obj):
+        # Return only active items
+        active_items = obj.items.filter(is_active=True)
+        return MenuItemSerializer(active_items, many=True, context=self.context).data

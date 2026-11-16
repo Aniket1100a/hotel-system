@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-// Try both VITE_API_BASE_URL and VITE_API_URL for flexibility.
-// Fall back to the local Django server so the dashboard works out of the box.
-const BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://100.74.68.125:8000/api').trim();
+// Try both VITE_API_BASE_URL and VITE_API_URL for flexibility
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+if (!BASE_URL) {
+  console.warn("VITE_API_BASE_URL or VITE_API_URL is not defined in your .env file. API calls will fail.");
+}
 
 export const api = axios.create({
   baseURL: BASE_URL,

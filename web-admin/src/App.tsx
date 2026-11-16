@@ -14,7 +14,6 @@ import StaffManagement from './pages/StaffManagement';
 import Inventory from './pages/Inventory';
 import TableManagement from './pages/TableManagement';
 import Reports from './pages/Reports';
-import KitchenDisplay from './pages/KitchenDisplay';
 
 export default function App() {
   return (
@@ -26,7 +25,6 @@ export default function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/menu" element={<MenuManagement />} />
             <Route path="/billing" element={<Billing />} />
-            <Route path="/kot" element={<KitchenDisplay />} />
             <Route path="/staff" element={<StaffManagement />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/tables" element={<TableManagement />} />
